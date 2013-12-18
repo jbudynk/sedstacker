@@ -1,0 +1,168 @@
+#
+
+import numpy
+import unittest
+from sedstacker.sed.sed import Sed, PhotometricPoint, find_range
+from math import log10
+import matplotlib.pyplot as plt
+
+
+class TestSed(unittest.TestCase):
+
+    _x = numpy.array([3823.0, 4477.9, 5657.1, 6370.0])
+    _y = numpy.array([1.3e-11, 2.56e-11, 7.89e-11, 6.5e-11])
+    _yerr = numpy.array([1.0e-13, 1.0e-13, 1.0e-13, 1.0e-13])
+    _xunit = ['Angstrom']
+    _yunit = ['erg/s/cm**2/Angstrom']
+    _z = 1.65
+
+    def test__init__(self):
+
+        sed = Sed(x = numpy.array([3823.0, 44770.9, 5657.1]),
+                  y = numpy.array([1.3e-11, 2.56e-11, 7.89e-11]),
+                  yerr = numpy.array([1.0e-13, 1.0e-13, 1.0e-13]),
+                  xunit = ['Angstrom'],
+                  yunit = ['erg/s/cm**2/Angstrom'],
+                  z = 1.65)
+        
+
+#        sed = Sed()
+#        sed.x = numpy.array([3823.0, 44770.9, 5657.1])
+#        sed.y = numpy.array([1.3e-11, 2.56e-11, 7.89e-11])
+#        sed.yerr = numpy.array([1.0e-13, 1.0e-13, 1.0e-13])
+#        sed.xunit = numpy.array(['Angstrom','Angstrom','Angstrom'])
+#        sed.yunit = numpy.array(['erg/s/cm**2/Angstrom',
+#                                 'erg/s/cm**2/Angstrom',
+#                                 'erg/s/cm**2/Angstrom'])
+#        sed.z = 1.65
+
+#        self.assertAlmostEqual(sed.x[0], 3823.0)
+#        self.assert_(sed.xunit[0] == 'Angstrom')
+#        self.failUnlessEqual(len(sed.y), 3)
+#        self.assertEqual(len(sed.__dict__), 6)
+
+        self.assertAlmostEqual(sed[0].x, 3823.0)
+        self.assert_(sed[1].xunit == 'Angstrom')
+        self.failUnlessEqual(len(sed), 3)
+        self.assertEqual(len(sed.__dict__), 1)
+        self.assertEqual(sed.z, 1.65)
+
+
+    def test_add_point(self):
+        
+        sed = Sed()
+        point = PhotometricPoint(x=1.0, y=1.0)
+
+        sed.add_point(point)
+
+        self.assertEqual(sed[0].x, 1.0)
+        self.assertEqual(sed[0].y, 1.0)
+        self.assert_(numpy.isnan(sed[0].yerr))
+        self.assertEqual(len(sed[0].__dict__), 6, 'length of sed[0]')
+
+        sed.add_point(PhotometricPoint(x=2.0, y=-2.0))
+
+        self.assertEqual(sed[0].x, 1.0)
+        self.assertEqual(sed[1].y, -2.0)
+        self.assertEqual(len(sed[1].__dict__), 6, 'length of sed[2]')
+
+
+    def test_remove_point(self):
+        
+        sed = Sed()
+        point1 = PhotometricPoint(x=1.0, y=1.0)
+        point2 = PhotometricPoint(x=2.0, y=-2.0)
+
+        sed.add_point(point1)
+        sed.add_point(point2)
+
+        self.assert_(len(sed) == 2)
+
+        sed.remove_point(0)
+
+        self.assert_(len(sed) == 1)
+        self.assertEqual(sed[0].x, 2.0)
+
+
+    def test_mask_point(self):
+        
+        sed = Sed(x=[0.0], y=[0.0])
+        point1 = PhotometricPoint(x=1.0, y=1.0)
+        point2 = PhotometricPoint(x=2.0, y=-2.0)
+
+        sed.add_point(point1)
+        sed.add_point(point2)
+
+        sed.mask_point(1)
+        self.assert_(sed[1].mask)
+        
+        sed.unmask_point(1)
+        self.failIf(sed[1].mask)
+
+
+    def test_add_sed(self):
+        
+        sed1 = Sed()
+        sed2 = Sed(x = self._x, y = self._y, yerr = self._yerr,
+                   xunit = self._xunit, yunit = self._yunit,
+                   z = self._z)
+        
+        sed1.add_segment(sed2)
+
+        self.assertEqual(len(sed1), 4)
+        self.assertEqual(sed1[0].x, self._x[0])
+
+        sed3 = Sed(x = self._x, y = self._y, yerr = self._yerr,
+                   xunit = self._xunit, yunit = self._yunit,
+                   z = self._z)
+        sed1.add_segment(sed2, sed3)
+
+        self.assertEqual(len(sed1), 12)
+        self.assertEqual(sed1[7].y, self._y[3])
+        
+        total = 0
+        for points in sed1:
+            total += points.x
+        self.assertEqual(total, sum(self._x)*3)
+
+
+    def test_shift(self):
+        
+        sed = Sed(x = self._x, y = self._y, yerr = self._yerr,
+                  xunit = self._xunit, yunit = self._yunit,
+                  z = self._z)
+        
+        shifted_sed_cfTrue = sed.shift(0.1)
+        #shifted_sed_cfeqFalse = sed.shift(0.1, correct_flux = False)
+        
+        self.assertEqual(shifted_sed_cfTrue.z, 0.1)
+        self.assertAlmostEqual('%.2f' % shifted_sed_cfTrue[1].x, repr(1858.75))
+
+#        plt.loglog(sedarray_shift[0], sedarray_shift[1], '-',
+#                 sedarray[0], sedarray[1], '-')
+#        plt.show()
+
+
+    def test_normalize_by_int(self):
+
+        sed = Sed(x = self._x, y = self._y, yerr = self._yerr,
+                  xunit = self._xunit, yunit = self._yunit,
+                  z = self._z)
+
+        norm_sed = sed.normalize_by_int()
+
+        self.assert_(hasattr(norm_sed, 'norm_constant'))
+
+
+    def test_toarray(self):
+
+        sed = Sed(x = self._x, y = self._y, yerr = self._yerr,
+                  xunit = self._xunit, yunit = self._yunit,
+                  z = self._z)
+
+        sedarray = sed.toarray()
+        self.assertEqual(sedarray[1][0], self._y[0])
+
+
+if __name__ == '__main__':
+    unittest.main()
