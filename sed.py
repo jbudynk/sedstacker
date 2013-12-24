@@ -29,7 +29,7 @@ class PhotometricPoint(object):
     '''Represents a photometric point on a SED.
     Attributes: x, y, yerr, xunit, yunit, units'''
 
-    def __init__(self, x = None, y = None, yerr = None, xunit = 'AA', yunit ='erg/s/cm**2/AA'):
+    def __init__(self, x=None, y=None, yerr=None, xunit='AA', yunit='erg/s/cm**2/AA'):
         '''Returns a PhotometricPoint.
         Attributes: x, y, yerr, xunit, yunit
 
@@ -66,13 +66,13 @@ class PhotometricPoint(object):
 
 class Segment(object):
 
-    def shift(self, z0, correct_flux = True):
+    def shift(self, z0, correct_flux=True):
         raise NotImplementedError('shift() is implemented only for instantiated Segment subclass objects.')
 
-    def normalize_at_point(self, x0, y0, norm_operator = 0, correct_flux = False):
+    def normalize_at_point(self, x0, y0, norm_operator=0, correct_flux=False):
         raise NotImplementedError('normalize_at_point() is implemented only for instantiated Segment subclass objects.')
 
-    def normalize_by_int(self, minWavelength = 'min', maxWavelength = 'max', correct_flux = False, z0 = None):
+    def normalize_by_int(self, minWavelength='min', maxWavelength='max', correct_flux=False, z0=None):
         raise NotImplementedError('normalize_by_int() is implemented only for instantiated Segment subclass objects.')
 
 #    def correct_flux(self):
@@ -129,7 +129,7 @@ class Spectrum(Segment):
             self.z = z
 
 
-    def shift(self, z0, correct_flux = True):
+    def shift(self, z0, correct_flux=True):
         '''
         Redshifts the spectrum by means of cosmological expansion.
         
@@ -155,11 +155,11 @@ class Spectrum(Segment):
             spec_z0 = (1 + z0) * spec / (1+self.z)
             flux_z0 = flux
 
-        return Spectrum(x = spec_z0, y = flux_z0, yerr= self.yerr,
-                        xunit = self.xunit, yunit = self.yunit, z = z0)
+        return Spectrum(x=spec_z0, y=flux_z0, yerr=self.yerr,
+                        xunit=self.xunit, yunit=self.yunit, z=z0)
 
 
-    def normalize_at_point(self, x0, y0, norm_operator = 0, correct_flux = False, z0 = None):
+    def normalize_at_point(self, x0, y0, norm_operator=0, correct_flux=False, z0=None):
 
         '''Normalizes the SED such that at spectral coordinate x0,
         the flux of the SED is y0.
@@ -201,12 +201,11 @@ class Spectrum(Segment):
         spec_indices = find_range(self.x, x0-10**dx, x0+10**dx)
 
         if spec_indices == (-1,-1):
-            logging.error(' Normalization aborted.')
+            logging.warning(' Normalization aborted.')
             raise OutsideRangeError
 
         if correct_flux:
-            specz0 = self.x * (1+z0) / (1+self.z)
-            tmp, fluxz = shift(spec, self.y, z0, self.z)
+            fluxz = correct_flux_(self.x, self.y, self.z, z0)
             try:
                 avg_flux = numpy.average(fluxz[spec_indices[0]:spec_indices[1]])
             except FloatingPointError:
@@ -228,14 +227,14 @@ class Spectrum(Segment):
         else:
             raise ValueError('Unrecognized norm_operator. keyword \'norm_operator\' must be either 0 (for multiply) or 1 (for addition)')
 
-        norm_spectrum = Spectrum(x = self.x, y = flux, yerr = fluxerr,
-                                 xunit = self.xunit, yunit = self.yunit, z = self.z)
+        norm_spectrum = Spectrum(x=self.x, y=flux, yerr=fluxerr,
+                                 xunit=self.xunit, yunit=self.yunit, z=self.z)
         setattr(norm_spectrum, 'norm_constant', norm_constant)
 
         return norm_spectrum
 
 
-    def normalize_by_int(self, minWavelength = 'min', maxWavelength = 'max', correct_flux = False, z0 = None):
+    def normalize_by_int(self, minWavelength='min', maxWavelength='max', correct_flux=False, z0=None):
 
         '''Normalises the Spectrum such that the area under the specified wavelength range is equal to 1.
 
@@ -265,26 +264,25 @@ class Spectrum(Segment):
             # shift the SED back to original redshift z0.
             # calculate fluxz0, the flux of the SED at z0.
             # what about the yerr?
-            specz0 = self.x * (1+z0) / (1+self.z)
-            tmp, fluxz = shift(specz0, self.y, z0, self.z)
+            fluxz = correct_flux_(self.x, self.y, self.z, z0)
             sedFluxSlice = fluxz[totalCut]
             norm_constant = 1.0/numpy.trapz(abs(sedFluxSlice), sedWavelengthSlice)
             yerr = self.yerr*norm_constant if self.yerr is not None else None
-            norm_segment = Sed(x = self.x, y = fluxz*norm_constant, yerr = yerr*norm_constant,
-                                   xunit = xunit, yunit = yunit, z = self.z)
+            norm_segment = Sed(x=self.x, y=fluxz*norm_constant, yerr=yerr*norm_constant,
+                                   xunit=xunit, yunit=yunit, z=self.z)
         else:
             sedFluxSlice = self.y[totalCut]
             norm_constant = 1.0/numpy.trapz(abs(sedFluxSlice), sedWavelengthSlice)
             yerr = self.yerr*norm_constant if self.yerr is not None else None
-            norm_segment = Spectrum(x = self.x, y = self.y*norm_constant, yerr = yerr,
-                                xunit = self.xunit, yunit = self.yunit, z = self.z)
+            norm_segment = Spectrum(x=self.x, y=self.y*norm_constant, yerr=yerr,
+                                xunit=self.xunit, yunit=self.yunit, z=self.z)
 
         setattr(norm_segment, 'norm_constant', norm_constant)
 
         return norm_segment
 
 
-    def write(self, filename, xunit = 'AA', yunit = 'erg/s/cm**2/AA', fmt='ascii'):
+    def write(self, filename, xunit='AA', yunit='erg/s/cm**2/AA', fmt='ascii'):
         '''Write Spectrum to file.
         Ex:
         # x y
@@ -370,7 +368,7 @@ class Sed(Segment, list):
             raise SegmentError('yunit must have the same length as y.')
         
         for i in range(len(x)):
-            point = PhotometricPoint(x = x[i], y = y[i], yerr = yerr[i], xunit = xunit[i], yunit = yunit[i])
+            point = PhotometricPoint(x=x[i], y=y[i], yerr=yerr[i], xunit=xunit[i], yunit=yunit[i])
             self.append(point)
 
 
@@ -408,11 +406,11 @@ class Sed(Segment, list):
         else:
             spec_z0 = (1 + z0) * spec / (1+self.z)
             flux_z0 = flux
-        return Sed(x = spec_z0, y = flux_z0, yerr = fluxerr,
-                   xunit = xunit, yunit = yunit, z = z0)
+        return Sed(x=spec_z0, y=flux_z0, yerr=fluxerr,
+                   xunit=xunit, yunit=yunit, z=z0)
 
 
-    def normalize_at_point(self, x0, y0, norm_operator=0, correct_flux = False, z0=None):
+    def normalize_at_point(self, x0, y0, norm_operator=0, correct_flux=False, z0=None):
 
         '''Normalizes the SED such that at spectral coordinate x0,
            the flux of the SED is y0.
@@ -449,8 +447,7 @@ class Sed(Segment, list):
             raise SegmentError('Sed object must have 4 or more points for normalize_at_point() to work.')
 
         if correct_flux:
-            specz0 = spec * (1+z0) / (1+self.z)
-            tmp, fluxz = shift(specz0, flux, z0, self.z)
+            fluxz = correct_flux_(spec, flux, self.z, z0)
             flux = fluxz  
 
         interp_self = interpolate.interp1d(spec, flux, kind='nearest')
@@ -473,7 +470,7 @@ class Sed(Segment, list):
         return norm_sed
     
 
-    def normalize_by_int(self, minWavelength = 'min', maxWavelength = 'max', correct_flux = False, z0 = None):
+    def normalize_by_int(self, minWavelength='min', maxWavelength='max', correct_flux=False, z0=None):
 
         '''Normalises the SED such that the area under the specified wavelength range is equal to 1.
 
@@ -509,8 +506,7 @@ class Sed(Segment, list):
             # shift the SED back to original redshift z0.
             # calculate fluxz0, the flux of the SED at z0.
             # what about the yerr?
-            specz0 = spec * (1+z0) / (1+self.z)
-            tmp, fluxz = shift(specz0, flux, z0, self.z)
+            fluxz = correct_flux_(spec, flux, self.z, z0)
             sedFluxSlice = fluxz[totalCut]
             norm_constant = 1.0/numpy.trapz(abs(sedFluxSlice), sedWavelengthSlice)
             norm_segment = Sed(x = spec, y = fluxz*norm_constant, yerr = fluxerr*norm_constant,
@@ -520,8 +516,8 @@ class Sed(Segment, list):
             norm_constant = 1.0/numpy.trapz(abs(sedFluxSlice), sedWavelengthSlice)
             norm_fluxerr = fluxerr*norm_constant if fluxerr is not None else None
             norm_flux = flux*norm_constant
-            norm_segment = Sed(x = spec, y = norm_flux, yerr = norm_fluxerr,
-                               xunit = xunit, yunit = yunit, z = self.z)
+            norm_segment = Sed(x=spec, y=norm_flux, yerr=norm_fluxerr,
+                               xunit=xunit, yunit=yunit, z=self.z)
 
         setattr(norm_segment, 'norm_constant', norm_constant)
         
@@ -604,7 +600,7 @@ class Sed(Segment, list):
         return sedarray
 
 
-    def write(self, filename, xunit = 'AA', yunit = 'erg/s/cm**2/AA', fmt='ascii'):
+    def write(self, filename, xunit='AA', yunit='erg/s/cm**2/AA', fmt='ascii'):
         '''Write Sed to file.
         Ex:
 
@@ -696,7 +692,7 @@ class AggregateSed(list):
     def __str__(self):
         pass
 
-    def shift(self, z0, correct_flux = True):
+    def shift(self, z0, correct_flux=True):
         '''
         Redshifts the Seds and/or Spectra in the AggregateSed by means of cosmological
         expansion.
@@ -740,7 +736,7 @@ class AggregateSed(list):
         raise NotImplemented('filter() is not implemented yet.')
 
 
-    def normalize_at_point(self, x0, y0, correct_flux = False, z0 = None):
+    def normalize_at_point(self, x0, y0, correct_flux=False, z0=None):
         '''Normalizes the SED such that at spectral coordinate x0,
            the flux of the SED is y0.
 
@@ -775,7 +771,7 @@ class AggregateSed(list):
 
         for segment in self.segments:
             try:
-                norm_seg = segment.normalize_at_point(x0, y0, correct_flux = correct_flux, z0 = z0)
+                norm_seg = segment.normalize_at_point(x0, y0, correct_flux=correct_flux, z0=z0)
                 norm_segments.append(norm_seg)
             except OutsideRangeError:
                 logging.warning(' Excluding AgggregateSed[%d] from the normalized AggregateSed.\n' % self.index(segment))
@@ -787,7 +783,7 @@ class AggregateSed(list):
         return AggregateSed(norm_segments)
 
 
-    def normalize_by_int(self, minWavelength = 'min', maxWavelength = 'max', correct_flux = False, z0 = None):
+    def normalize_by_int(self, minWavelength='min', maxWavelength='max', correct_flux=False, z0=None):
         '''Normalises the SED such that the area under the specified wavelength range is equal to 1.
 
         Kwargs:
@@ -809,9 +805,9 @@ class AggregateSed(list):
 
         for segment in self.segments:
             try:
-                norm_seg = segment.normalize_by_int(minWavelength = minWavelength,
-                                                    maxWavelength = maxWavelength,
-                                                    correct_flux = correct_flux,
+                norm_seg = segment.normalize_by_int(minWavelength=minWavelength,
+                                                    maxWavelength=maxWavelength,
+                                                    correct_flux=correct_flux,
                                                     z0 = z0)
             except SegmentError, e:
                 print 'Excluding AggregateSed[%d] from the normalized AggregateSed' % self.index(segment)
@@ -874,7 +870,7 @@ class AggregateSed(list):
         self.segments.remove(segment)
 
 
-    def write(self, filename, xunit = 'AA', yunit = 'erg/s/cm**2/AA', fmt='ascii'):
+    def write(self, filename, xunit='AA', yunit='erg/s/cm**2/AA', fmt='ascii'):
         '''Write Sed to file.
         Ex:
         # x y
@@ -920,7 +916,7 @@ class AggregateSed(list):
                 ascii.write(segment_arrays, filename, names=['x','y','y_err','counts'], comment='#')
 
 
-def stack(aggrseds, binsize, statistic, fill = 'remove', smooth = False, smooth_binsize = 10, logbin = False):
+def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_binsize=10, logbin=False):
     '''Rebins the SEDs along the spectral axis into user-defined binsizes, then combines the fluxes in each bin together according to one of four statistics: average, weighted average, addition, or a user-defined function. Returns a Sed object with an extra attribute 'count' containing the number of flux counts per bin.
 
     Args:
@@ -984,7 +980,7 @@ def stack(aggrseds, binsize, statistic, fill = 'remove', smooth = False, smooth_
     try:
         yarr, xarr, yerrarr, counts = calc.binup(giant_flux, giant_spec, xarr,
                                        statistic, binsize, fill,
-                                       giant_fluxerr, logbin = logbin)
+                                       giant_fluxerr, logbin=logbin)
     except ValueError, e:
         print e.msg
         raise
@@ -1001,14 +997,14 @@ def stack(aggrseds, binsize, statistic, fill = 'remove', smooth = False, smooth_
         yarr = calc.smooth(yarr, smooth_binsize)
 
     stacked_sed = Sed(x=xarr, y=yarr, yerr=yerrarr,
-                      xunit = xunit, yunit = yunit, z = z)
+                      xunit=xunit, yunit=yunit, z=z)
 
     setattr(stacked_sed, 'counts', counts)
 
     return stacked_sed
 
 
-def create_from_points(points, z = None):
+def create_from_points(points, z=None):
     '''Creates and returns a Sed object from an iterable of PhotometricPoints.
     Args:
         points (iterable): A collection (list, set, tuple) of PhotometricPoints
@@ -1054,6 +1050,12 @@ def shift(spec, flux, z, z0):
     flux_z0 = flux*z_total_flux/z0_total_flux
     
     return spec_z0, flux_z0
+
+
+def correct_flux_(spec, flux, z, z0):
+    specz0 = spec * (1+z0) / (1+z)
+    tmp, corrected_flux = shift(specz0, flux, z0, z)
+    return corrected_flux
 
 
 def find_range(array, a, b):
