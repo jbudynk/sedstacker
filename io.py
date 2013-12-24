@@ -15,6 +15,9 @@ from sedstacker.config import NONE_VALS
 # (12/16/2013 - took out **kwargs from load_cat(). Haven't tested it, don't know if **kwargs would work.)
 
 
+logging.basicConfig(format='%(levelname)s:%(message)s')
+
+
 def load_sed(filename, xunit='AA', yunit='erg/s/cm**2/AA', sed_type='spectrum', fmt='ascii'): #aux_data=None
     '''Reads a file containing SED data adhering to the SED File format and returns either a Sed or Spectrum object, depending on the argument of 'type'.
 
@@ -63,7 +66,7 @@ def load_sed(filename, xunit='AA', yunit='erg/s/cm**2/AA', sed_type='spectrum', 
 #            pass
 #        else:
 #            raise TypeError('aux_data must be a list of strings of column names in input file.')
-        logging.info('Created Spectrum object.')
+        logging.info(' Created Spectrum object.')
         return spectrum
 
     elif sed_type == 'sed':
@@ -77,7 +80,7 @@ def load_sed(filename, xunit='AA', yunit='erg/s/cm**2/AA', sed_type='spectrum', 
         sed = create_from_points(points)
         if sed_data['counts'] is not None:
             setattr(sed,'counts',sed_data['counts'])
-        logging.info('Created Sed object.')
+        logging.info(' Created Sed object.')
         return sed
 
     else:
@@ -231,10 +234,6 @@ def _read_ascii(filename):
                 fluxerr = None
             counts = None
 
-    except InconsistentTableError, e:
-        print e
-        raise
-
     # to deal with 'null' values in table
     try:    
         for i, val in enumerate(fluxerr):
@@ -250,7 +249,7 @@ def _read_ascii(filename):
 
     # if there's no y_err column in file
     # set the fluxerr to None
-    except TypeError, e:
+    except TypeError:
         fluxerr = None
 
     return dict(x=spec, y=flux, y_err=fluxerr, counts=counts)
@@ -263,11 +262,8 @@ def no_fluxerror_column_info():
 
 
 def non_standard_column_names_warning(filename):
-    logging.warning(' Column names in "%s" do not adhere to SED File format.\n'
+    logging.warning(' Column names in "%s" do not adhere to SED File format.'
                     'Reading the first column as spectral values, second column '
                     'as fluxes, and third column, if present, as flux-errors.'
                     % filename
                     )
-
-
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
