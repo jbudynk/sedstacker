@@ -22,7 +22,7 @@ from sedstacker.exceptions import NoRedshiftError, InvalidRedshiftError, Segment
 # 2. need to test correct_flux algorithm
 
 
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
+logging.basicConfig(format='%(levelname)s:%(message)s')
 
 
 class PhotometricPoint(object):
@@ -117,6 +117,8 @@ class Spectrum(Segment):
         self.xunit = xunit
         self.yunit = yunit
 
+        # How do you assert that an attribute must be of a certain type?
+        # Say someone adds a redshift after creating the Spectrum object. How can I check that the attribute value they enter is non-negative and of numeric type?
         if isinstance(z, types.NoneType):
             self.z = z
         elif type(z) not in (types.FloatType, types.IntType, numpy.float_, numpy.int_):
@@ -143,7 +145,7 @@ class Spectrum(Segment):
         Returns:
             A new Spectrum object with the redshifted spectrum.
         '''
-#        try:
+
         spec = self.x
         flux = self.y
 
@@ -156,17 +158,15 @@ class Spectrum(Segment):
         return Spectrum(x = spec_z0, y = flux_z0, yerr= self.yerr,
                         xunit = self.xunit, yunit = self.yunit, z = z0)
 
-#        except InvalidRedshiftError():
-#            raise
-#
-#        except NoRedshiftError, e:
-#            raise
-        
 
     def normalize_at_point(self, x0, y0, norm_operator = 0, correct_flux = False, z0 = None):
 
         '''Normalizes the SED such that at spectral coordinate x0,
-           the flux of the SED is y0.
+        the flux of the SED is y0.
+
+        normalize_at_point() takes the average flux within a range of spectral values "dx" = log10(x0) - 1.7 (so that dx is always one order lower than x0) centered on x0 as the observed flux:
+
+            normalization_constant = y0 / avg(observed_flux[dx])
 
         Args:
             x0 (float, int): The spectral coordinate to normalize the SED at
@@ -190,69 +190,63 @@ class Spectrum(Segment):
 
         Requires that the SED has at least 4 photometric points'''
 
+        numpy.seterr(invalid='raise')
 
         if len(self.x) < 4:
-            raise SegmentError('Spectrum object must have 4 or more points for normalize_at_point() to work.')
+            raise SegmentError('Spectrum object must have 4 or more points to use normalize_at_point().')
 
+        y0 = numpy.float_(y0)
+        x0 = numpy.float_(x0)
         dx = log10(x0) - 1.7 #so that dx is always one order lower than x0.
         spec_indices = find_range(self.x, x0-10**dx, x0+10**dx)
 
-        if spec_indices != (-1,-1):
-            spec_range = self.x[spec_indices[0]:spec_indices[1]]
-
-            if correct_flux:
-
-#                try:
-
-                specz0 = self.x * (1+z0) / (1+self.z)
-                tmp, fluxz = shift(specz0, self.y, z0, self.z)
-                avg_flux = numpy.average(fluxz[spec_indices[0]:spec_indices[1]])
-                norm_constant = y0 / avg_flux
-
-#                except NoRedshiftError:
-#                    raise
-#                except InvalidRedshiftError():
-#                    raise
-#                except InvalidRedshiftError:
-#                    raise
-
-            else:
-                avg_flux = numpy.average(self.y[spec_indices[0]:spec_indices[1]])
-                norm_constant = y0 / avg_flux
-                
-            if norm_operator == 0:
-                flux = self.y*norm_constant
-                fluxerr = self.yerr*norm_constant if self.yerr is not None else None # check that the statistics are right...
-            elif norm_operator == 1:
-                flux = self.y + norm_constant
-                fluxerr = self.yerr
-            else:
-                raise ValueError('Unrecognized norm_operator. keyword \'norm_operator\' must be either 0 (for multiply) or 1 (for addition)')
-
-            norm_spectrum = Spectrum(x = self.x, y = flux, yerr = fluxerr,
-                            xunit = self.xunit, yunit = self.yunit, z = self.z)
-            setattr(norm_spectrum, 'norm_constant', norm_constant)
-            return norm_spectrum
-
-        else:
-            logging.warning('Normalization aborted.')
+        if spec_indices == (-1,-1):
+            logging.error(' Normalization aborted.')
             raise OutsideRangeError
+
+        if correct_flux:
+            specz0 = self.x * (1+z0) / (1+self.z)
+            tmp, fluxz = shift(spec, self.y, z0, self.z)
+            try:
+                avg_flux = numpy.average(fluxz[spec_indices[0]:spec_indices[1]])
+            except FloatingPointError:
+                avg_flux = numpy.average(fluxz[spec_indices[0]])
+        else:
+            try:
+                avg_flux = numpy.average(self.y[spec_indices[0]:spec_indices[1]])
+            except FloatingPointError:
+                avg_flux = numpy.average(self.y[spec_indices[0]])
+
+        if norm_operator == 0:
+            norm_constant = y0 / avg_flux
+            flux = self.y*norm_constant
+            fluxerr = self.yerr*norm_constant if self.yerr is not None else None
+        elif norm_operator == 1:
+            norm_constant = y0 - avg_flux
+            flux = self.y + norm_constant
+            fluxerr = self.yerr
+        else:
+            raise ValueError('Unrecognized norm_operator. keyword \'norm_operator\' must be either 0 (for multiply) or 1 (for addition)')
+
+        norm_spectrum = Spectrum(x = self.x, y = flux, yerr = fluxerr,
+                                 xunit = self.xunit, yunit = self.yunit, z = self.z)
+        setattr(norm_spectrum, 'norm_constant', norm_constant)
+
+        return norm_spectrum
 
 
     def normalize_by_int(self, minWavelength = 'min', maxWavelength = 'max', correct_flux = False, z0 = None):
 
-        """Normalises the SED such that the area under the specified wavelength range is equal to 1.
+        '''Normalises the Spectrum such that the area under the specified wavelength range is equal to 1.
 
-        @type minWavelength: float or 'min'
-        @param minWavelength: minimum wavelength of range over which to normalise SED
-        @type maxWavelength: float or 'max'
-        @param maxWavelength: maximum wavelength of range over which to normalise SED
-        @type correct_flux: bool
-        @param correct_flux: switch used to correct for SEDs that were shifted to some redshift
-                             without taking into account flux brightening/dimming due to redshift
-        @type z0: float or int
-        @param z0: used if correct_flux = True. The original redshift of the source
-        """
+        Kwargs:
+            minWavelength (float or 'min'): minimum wavelength of range over which to normalise Spectrum
+            maxWavelength (float or 'max'): maximum wavelength of range over which to normalise Spectrum
+            correct_flux (bool): switch used to correct for SEDs that were shifted to some redshift without taking into account flux brightening/dimming due to redshift
+            z0 (float or int): The original redshift of the source. Used if correct_flux = True.
+
+        The Spectrum must have > 4 points
+        '''
 
         if len(self.x) < 4:
             raise SegmentError('Spectrum object must have 4 or more points for normalize_at_point() to work.')
@@ -271,7 +265,6 @@ class Spectrum(Segment):
             # shift the SED back to original redshift z0.
             # calculate fluxz0, the flux of the SED at z0.
             # what about the yerr?
-#            try:
             specz0 = self.x * (1+z0) / (1+self.z)
             tmp, fluxz = shift(specz0, self.y, z0, self.z)
             sedFluxSlice = fluxz[totalCut]
@@ -279,12 +272,6 @@ class Spectrum(Segment):
             yerr = self.yerr*norm_constant if self.yerr is not None else None
             norm_segment = Sed(x = self.x, y = fluxz*norm_constant, yerr = yerr*norm_constant,
                                    xunit = xunit, yunit = yunit, z = self.z)
-#            except NoRedshiftError:
-#                raise
-#            except OutsideRangeError:
-#                raise
-#            except InvalidRedshiftError():
-#                raise
         else:
             sedFluxSlice = self.y[totalCut]
             norm_constant = 1.0/numpy.trapz(abs(sedFluxSlice), sedWavelengthSlice)
@@ -325,26 +312,41 @@ class Spectrum(Segment):
 
 
 class Sed(Segment, list):
-    '''Represents a photometric SED from one astronomical object or model.
-    Attributes:
-        z (float): The redshift of the Sed'''
+    '''Represents a photometric SED from one astronomical object or model.'''
 
     def __init__(self, x=[], y=[], yerr=None, xunit=['AA'], yunit=['erg/s/cm**2/AA'], z=None):
         '''
         Kwargs:
-            x (list): The spectral coordinates. Default value is None.
-            y (list): The flux values. Default value is None.
-            yerr (list): The errors on the flux values. Default value is None. If all y-values
-                         share the same error, yerr can be a float or integer.
+            x (list): The spectral coordinates. Default value is an empty list, [].
+            y (list): The flux values. Default value is an empty list, [].
+            yerr (list; float, int): The errors on the flux values. Default value is None. If all y-values share the same error, yerr can be a float or integer.
             xunit (list, str): The spectral coordinate units. Default value is ['AA'].
             yunit (list, str): The flux coordinates. Default value is ['erg/s/cm**2/AA'].
             z (float): The redshift of the Sed. Default value is None.
         Raises:
-            SegmentError'''
+            SegmentError
+        
+        x and y must have the same length. If the kwarg of yerr is a single value YERR, then all (x,y) SED points will have error YERR.
+        >>> sed = Sed(x=[1212.0, 3675.0, 4856.0], y=[1.456e-11, 3.490e-11, 5.421e-11], yerr=1.0e-13, z=0.02)
+        >>> for point in sed:
+        ...     print point.yerr
+        ...
+        1.0e-13
+        1.0e-13
+        1.0e-13
+
+'''
 
 
 #        self._cache = []
-        self.z = z
+        if isinstance(z, types.NoneType):
+            self.z = z
+        elif type(z) not in (types.FloatType, types.IntType, numpy.float_, numpy.int_):
+            raise InvalidRedshiftError(0)
+        elif z < 0:
+            raise InvalidRedshiftError(1)
+        else:
+            self.z = z
         
         if len(x) != len(y):
             raise SegmentError('x and y must be of the same length.')
@@ -446,29 +448,14 @@ class Sed(Segment, list):
         if len(spec) < 4:
             raise SegmentError('Sed object must have 4 or more points for normalize_at_point() to work.')
 
-        dx = log10(x0) - 1.7 #so that dx is always one order lower than x0.
-        spec_indices = find_range(spec, x0-10**dx, x0+10**dx)
-
-        if spec_indices != (-1,-1):
-            pass
-        else:
-            logging.warning('Normalization aborted.')
-            raise OutsideRangeError
-
-        if correct_flux:            
-            try:
-                specz0 = spec * (1+z0) / (1+self.z)
-                tmp, fluxz = shift(specz0, flux, z0, self.z)
-                flux = fluxz
-            except NoRedshiftError:
-                raise
-            except OutsideRangeError:
-                raise
-            except InvalidRedshiftError:
-                raise
+        if correct_flux:
+            specz0 = spec * (1+z0) / (1+self.z)
+            tmp, fluxz = shift(specz0, flux, z0, self.z)
+            flux = fluxz  
 
         interp_self = interpolate.interp1d(spec, flux, kind='nearest')
         flux_at_x0 = interp_self(x0)
+
         if norm_operator == 0:
             norm_constant = y0 / flux_at_x0
             norm_flux = flux * norm_constant
@@ -476,6 +463,7 @@ class Sed(Segment, list):
         elif norm_operator == 1:
             norm_constant = y0 - flux_at_x0
             norm_flux = flux + norm_constant
+            norm_fluxerr = fluxerr
         else:
             raise ValueError('Unrecognized norm_operator. keyword \'norm_operator\' must be either 0 (for multiply) or 1 (for addition).')
 
@@ -487,21 +475,17 @@ class Sed(Segment, list):
 
     def normalize_by_int(self, minWavelength = 'min', maxWavelength = 'max', correct_flux = False, z0 = None):
 
-        """Normalises the SED such that the area under the specified wavelength range is equal to 1.
+        '''Normalises the SED such that the area under the specified wavelength range is equal to 1.
 
-        @type minWavelength: float or 'min'
-        @param minWavelength: minimum wavelength of range over which to normalise SED
-        @type maxWavelength: float or 'max'
-        @param maxWavelength: maximum wavelength of range over which to normalise SED
-        @type correct_flux: bool
-        @param correct_flux: switch used to correct for SEDs that were shifted to some redshift
-                             without taking into account flux brightening/dimming due to redshift
-        @type z0: float or int
-        @param z0: used if correct_flux = True. The original redshift of the source
+        Kwargs:
+            minWavelength (float or 'min'): minimum wavelength of range over which to normalise SED
+            maxWavelength (float or 'max'): maximum wavelength of range over which to normalise SED
+            correct_flux (bool): switch used to correct for SEDs that were shifted to some redshift without taking into account flux brightening/dimming due to redshift
+            z0 (float or int): The original redshift of the source. Used if correct_flux = True.
 
-        Requires that the SED have at least 4 photometric points.
+        The SED must have > 4 points.
+        '''
 
-        """
         sedarray = self.toarray()
         spec = sedarray[0]
         flux = sedarray[1]
@@ -510,7 +494,7 @@ class Sed(Segment, list):
         yunit = sedarray[4]
 
         if len(spec) < 4:
-            raise SegmentError('Sed object must have 4 or more points for normalize_by_int() to work.')
+            raise SegmentError('Sed object must have 4 or more points to use normalize_by_int().')
 
         if minWavelength == 'min':
             minWavelength=spec.min()
@@ -525,19 +509,12 @@ class Sed(Segment, list):
             # shift the SED back to original redshift z0.
             # calculate fluxz0, the flux of the SED at z0.
             # what about the yerr?
-#            try:
             specz0 = spec * (1+z0) / (1+self.z)
             tmp, fluxz = shift(specz0, flux, z0, self.z)
             sedFluxSlice = fluxz[totalCut]
             norm_constant = 1.0/numpy.trapz(abs(sedFluxSlice), sedWavelengthSlice)
             norm_segment = Sed(x = spec, y = fluxz*norm_constant, yerr = fluxerr*norm_constant,
                                xunit = xunit, yunit = yunit, z = self.z)
-#            except NoRedshiftError:
-#                raise
-#            except OutsideRangeError:
-#                raise
-#            except InvalidRedshiftError:
-#                raise
         else:
             sedFluxSlice = flux[totalCut]
             norm_constant = 1.0/numpy.trapz(abs(sedFluxSlice), sedWavelengthSlice)
@@ -630,6 +607,7 @@ class Sed(Segment, list):
     def write(self, filename, xunit = 'AA', yunit = 'erg/s/cm**2/AA', fmt='ascii'):
         '''Write Sed to file.
         Ex:
+
         x y
         1941.8629     0.046853197
         1942.5043     0.059397754
@@ -681,7 +659,6 @@ class AggregateSed(list):
             if not isinstance(segment, Segment):
                 raise NotASegmentError
             elif isinstance(segment, Sed):
-                self.append(segment)
                 sedarray = segment.toarray()
                 self.x.append(sedarray[0])
                 self.y.append(sedarray[1])
@@ -690,13 +667,13 @@ class AggregateSed(list):
                 self.yunit.append(sedarray[4])
                 self.z.append(segment.z)
             else:
-                self.append(segment)
                 self.x.append(segment.x)
                 self.y.append(segment.y)
                 self.yerr.append(segment.yerr)
                 self.xunit.append(segment.xunit)
                 self.yunit.append(segment.yunit)
                 self.z.append(segment.z)
+            self.append(segment)
 
 #        self = self
 #        self.x = self.x
@@ -715,6 +692,9 @@ class AggregateSed(list):
 #        self.xunit.reshape(1,count)
 #        self.yunit.reshape(1,count)
 
+
+    def __str__(self):
+        pass
 
     def shift(self, z0, correct_flux = True):
         '''
@@ -746,11 +726,11 @@ class AggregateSed(list):
                 shifted_seg = segment.shift(z0, correct_flux = correct_flux)
                 shifted_segments.append(shifted_seg)
             except NoRedshiftError:
-                logging.info('Excluding '+repr(self)+'[%d] from the shifted AggregateSed.' % self.index(segment))
+                logging.info(' Excluding AggregateSed[%d] from the shifted AggregateSed.' % self.index(segment))
                 pass
 
             except InvalidRedshiftError:
-                logging.info('Excluding '+repr(self)+'[%d] from the shifted AggregateSed.' % self.index(segment))
+                logging.info(' Excluding AggregateSed[%d] from the shifted AggregateSed.' % self.index(segment))
                 pass
 
         return AggregateSed(shifted_segments)
@@ -798,37 +778,32 @@ class AggregateSed(list):
                 norm_seg = segment.normalize_at_point(x0, y0, correct_flux = correct_flux, z0 = z0)
                 norm_segments.append(norm_seg)
             except OutsideRangeError:
-                logging.warning(' Excluding '+repr(self)+'[%d] from the normalized AggregateSed.\n' % self.index(segment))
+                logging.warning(' Excluding AgggregateSed[%d] from the normalized AggregateSed.\n' % self.index(segment))
                 pass
             except SegmentError, e:
-                logging.warning(' Excluding '+repr(self)+'[%d] from the normalized AggregateSed\n' % self.index(segment))
+                logging.warning(' Excluding AggregateSed[%d] from the normalized AggregateSed\n' % self.index(segment))
                 pass
 
         return AggregateSed(norm_segments)
 
 
     def normalize_by_int(self, minWavelength = 'min', maxWavelength = 'max', correct_flux = False, z0 = None):
-        """Normalises the SED such that the area under the specified wavelength range is equal to 1.
+        '''Normalises the SED such that the area under the specified wavelength range is equal to 1.
 
-        @type minWavelength: float or 'min'
-        @param minWavelength: minimum wavelength of range over which to normalise SED
-        @type maxWavelength: float or 'max'
-        @param maxWavelength: maximum wavelength of range over which to normalise SED
-        @type correct_flux: bool
-        @param correct_flux: switch used to correct for SEDs that were shifted to some redshift
-                             without taking into account flux brightening/dimming due to redshift
-        @type z0: float or int
-        @param z0: used if correct_flux = True. The original redshift of the source
-
+        Kwargs:
+            minWavelength (float or 'min'): minimum wavelength of range over which to normalise SED
+            maxWavelength (float or 'max'): maximum wavelength of range over which to normalise SED
+            correct_flux (bool): switch used to correct for SEDs that were shifted to some redshift without taking into account flux brightening/dimming due to redshift
+            z0 (float or int): The original redshift of the source. Used if correct_flux = True.
         Raises:
             OutisdeRangeError: If a Sed's or Spectrum's spectral range does not cover point x0,
             then the segment is excluded from the returned normalized AggregateSed.
             SegmentError: If a Sed or Spectrum has less than 4 points, then the Sed or
             Spectrum is excluded from the returned normalized AggregateSed.
 
-        Requires that the SED have at least 4 photometric points.
+        Requires that the Segments have at least 4 points.
 
-        """
+        '''
 
         norm_segments = []
 
@@ -839,7 +814,6 @@ class AggregateSed(list):
                                                     correct_flux = correct_flux,
                                                     z0 = z0)
             except SegmentError, e:
-                print e.msg
                 print 'Excluding AggregateSed[%d] from the normalized AggregateSed' % self.index(segment)
                 raise
 
