@@ -4,6 +4,7 @@ from sedstacker.sed import Spectrum, Sed, AggregateSed, stack
 from sedstacker.io import load_sed
 from matplotlib import pyplot as plt
 import numpy as np
+import logging
 import os
 
 start = time.clock()

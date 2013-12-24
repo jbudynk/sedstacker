@@ -8,24 +8,35 @@ from sedstacker.exceptions import NoRedshiftError, InvalidRedshiftError
 
 class TestSegment(unittest.TestCase):
 
-    _x = numpy.array([3823.0, 4470.9, 5657.1, 6356.3])
-    _y = numpy.array([1.3e-11, 2.56e-11, 7.89e-11, 6.5e-11])
-    _yerr = numpy.array([1.0e-13, 1.0e-13, 1.0e-13, 1.0e-13])
+    _x = numpy.array([3823.0, 4470.9, 5657.1, 6356.3, 7000.0])
+    _y = numpy.array([1.3e-11, 2.56e-11, 7.89e-11, 6.5e-11, 1.2e-10])
+    _yerr = numpy.array([1.0e-13, 1.0e-13, 1.0e-13, 1.0e-13, 1e-12])
     _xunit = ['Angstrom']
     _yunit = ['erg/s/cm**2/Angstrom']
     _z = 1.65
 
 
-#    def test_normalize_at_point(self):
+    def test_normalize_at_point_sed0(self):
         
-#        sed = Sed(x = self._x, y = self._y, yerr = self._yerr,
-#                   xunit = self._xunit, yunit = self._yunit,
-#                   z = self._z)
+        sed = Sed(x = self._x, y = self._y, yerr = self._yerr,
+                   xunit = self._xunit, yunit = self._yunit,
+                   z = self._z)
 
-#        norm_sed = sed.normalize_at_point(5000.0, 1e-11)
+        norm_sed = sed.normalize_at_point(5000.0, 1e-11, norm_operator=0)
 
-#        self.assert_((norm_sed.x == 5000.0), (norm_sed.y == 1.0) == 5000.0, 1e-11)
+        self.assertAlmostEqual(norm_sed[2].y, 3.08203125e-11)
+        self.assertAlmostEqual(norm_sed[1].y, 1.0e-11)
 
+    def test_normalize_at_point_sed1(self):
+        
+        sed = Sed(x = self._x, y = self._y, yerr = self._yerr,
+                   xunit = self._xunit, yunit = self._yunit,
+                   z = self._z)
+
+        norm_sed = sed.normalize_at_point(5000.0, 1e-11, norm_operator=1)
+
+        self.assertAlmostEqual(norm_sed[2].y, 6.33e-11)
+        self.assertAlmostEqual(norm_sed[1].y, 1e-11)
 
     def test_normalize_by_int_spectrum(self):
         
@@ -58,7 +69,7 @@ class TestSegment(unittest.TestCase):
         self.assertAlmostEqual(norm_sed[1].y / norm_sed.norm_constant,  sed[1].y)
 
 
-    def test_norm_at_point_spectrum(self):
+    def test_norm_at_point_spectrum1(self):
         
         spectrum = Spectrum(x = numpy.linspace(3000.0, 10000.0, num=10000),
                             y = numpy.linspace(1e-13, 1e-11, num=10000))
@@ -68,7 +79,21 @@ class TestSegment(unittest.TestCase):
         self.assertEqual('%.4f' % norm_spectrum.norm_constant, repr(0.0342))
         self.assertEqual(len(norm_spectrum.yerr), len(norm_spectrum.x))
         self.assert_(numpy.isnan(norm_spectrum.yerr[1]))
+
+
+    def test_norm_at_point_spectrum2(self):
         
+        spectrum = Spectrum(x = range(0, 101),
+                            y = range(0, 101))
+        
+        norm_spectrum = spectrum.normalize_at_point(20, 50)
+
+        control_norm_constant = 50.0/20.0
+        control_norm_spectrum_y = spectrum.y*control_norm_constant
+
+        self.assertEqual(norm_spectrum.norm_constant, 2.5)
+        numpy.testing.assert_array_almost_equal(norm_spectrum.y, control_norm_spectrum_y)
+
 
     def test_shift_sed(self):
         
