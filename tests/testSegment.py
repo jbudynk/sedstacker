@@ -1,7 +1,7 @@
 #
 import unittest
 import numpy
-from sedstacker.sed import Segment, Sed, Spectrum
+from sedstacker.sed import Segment, Sed, Spectrum, correct_flux_, shift
 from astLib import astSED as astsed
 from sedstacker.exceptions import NoRedshiftError, InvalidRedshiftError
 
@@ -44,7 +44,7 @@ class TestSegment(unittest.TestCase):
                             y = numpy.linspace(1e-13, 1e-11, num=10000))
         norm_spectrum = spectrum.normalize_by_int()
 
-        astlib_spectrum = astsed.SED(wavelength = numpy.linspace(3000.0, 10000.0, num=10000),
+        astlib_spectrum = astsed.SED(wavelength=numpy.linspace(3000.0, 10000.0, num=10000),
                                      flux = numpy.linspace(1e-13, 1e-11, num=10000))
         astlib_spectrum.normalise()
 
@@ -136,6 +136,23 @@ class TestSegment(unittest.TestCase):
                    z = None)
 
         self.assertRaises(NoRedshiftError, sed.shift, 0.9)
+
+
+    def test_correct_flux(self):
+
+        spectrum = Spectrum(x=numpy.linspace(3000.0, 10000.0, num=10000),
+                            y=numpy.linspace(3e-13, 1e-11, num=10000),
+                            z=0.0)
+
+        z_original = 0.1
+        correct_flux = correct_flux_(spectrum.x, spectrum.y, spectrum.z, z_original)
+
+        specz0 = spectrum.x * (1+z_original) / (1+spectrum.z)
+        tmp, fluxz = shift(specz0, spectrum.y, z_original, spectrum.z)
+        control_correct_flux = fluxz
+
+        numpy.testing.assert_array_almost_equal(tmp, spectrum.x)
+        numpy.testing.assert_array_almost_equal(control_correct_flux, correct_flux)
 
         
 if __name__ == '__main__':

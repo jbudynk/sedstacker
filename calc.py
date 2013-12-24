@@ -15,6 +15,8 @@ from sedstacker.exceptions import SegmentError
 
 def binup(y, x, xarr, statistic, binsize, fill, yerr, logbin = False):
 
+    #numpy.seterr(all='ignore')
+
     builtin_statistics = {'avg':avg_bin, 'wavg':wavg_bin, 'sum':sum_bin}
 
     if isinstance(statistic, types.StringType):
