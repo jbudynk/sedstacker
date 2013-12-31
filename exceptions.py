@@ -40,8 +40,9 @@ class NotASegmentError(TypeError):
 
 
 class SegmentError(Exception):
-    def __init__(self):
-        Exception.__init__(self, '')
+    def __init__(self, msg):
+        msg = ''
+        Exception.__init__(self, msg)
 
 
 class OutsideRangeError(Exception):
