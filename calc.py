@@ -51,9 +51,16 @@ def binup(y, x, xarr, statistic, binsize, fill, yerr, logbin = False):
     for i in range(nx):
         high_lim = xarr[i] + xbin
         low_lim = xarr[i] - xbin
-        # the next 3 lines are very inefficient - for 6 sources, takes ~12.5 secs
-        y_bin = y[(x >= low_lim) & (x <= high_lim)]
-        yerr_bin = m_yerr[(x >= low_lim) & (x<= high_lim)]
+        # the next 2 lines are very inefficient - for 6 sources, takes ~12.5 secs
+        #y_bin = y[(x >= low_lim) & (x <= high_lim)]
+        #yerr_bin = m_yerr[(x >= low_lim) & (x<= high_lim)]
+
+        # This method takes ~10.5 seconds for 6 sources
+        low_cut = numpy.greater_equal(x, low_lim)
+        high_cut = numpy.less_equal(x, high_lim)
+        total_cut = numpy.logical_and(low_cut, high_cut)
+        y_bin = y[total_cut]
+        yerr_bin = m_yerr[total_cut]
         count[i] = len(y_bin)
 
         if count[i] >= 1:
@@ -117,17 +124,6 @@ def sum_bin(y_bin, yerr_bin, count):
     return yarr, outerr, count
 
 
-def big_spec(arr,binsize,log):
-    if log:
-        arr_min = math.floor(min(arr))
-        arr_max = math.ceil(max(arr))
-        return numpy.logspace(math.log10(arr_min), math.log10(arr_max), num=(arr_max-arr_min)/binsize)
-    else:
-        arr_min = math.floor(min(arr))
-        arr_max = math.ceil(max(arr))
-        return numpy.arange(arr_min, arr_max+binsize, binsize)
-
-
 def fill_fill(mask, arr):
     new_array = numpy.zeros(len(arr))
     for i, val in enumerate(mask):
@@ -176,3 +172,14 @@ def setup_binup_arrays(y, x, xarr, binsize, yerr, logbin = False):
     skipit = numpy.ones(len(yarr))
 
     return x, xarr, y, m_yerr, nx, xbin, yarr, outerr, count, skipit
+
+
+def big_spec(arr,binsize,log):
+    if log:
+        arr_min = math.floor(min(arr))
+        arr_max = math.ceil(max(arr))
+        return numpy.logspace(math.log10(arr_min), math.log10(arr_max), num=(arr_max-arr_min)/binsize)
+    else:
+        arr_min = math.floor(min(arr))
+        arr_max = math.ceil(max(arr))
+        return numpy.arange(arr_min, arr_max+binsize, binsize)
