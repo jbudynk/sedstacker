@@ -62,7 +62,7 @@ class TestLoadCat(unittest.TestCase):
         self.assertRaises(NonStandardColumnNamesError, io.load_cat, self._rootdir+'load_cat_bad_column_names.dat', self._column_map1 )
 
 
-    def testReadToAggregateSed(self):
+    def testReadToAggregateSed_simple(self):
 
         aggsed1 = io.load_cat(self._rootdir+"gs_irs_sep9_small.dat", self._column_map1)
 
@@ -112,6 +112,32 @@ class TestLoadCat(unittest.TestCase):
         self.assertEqual(hasattr(aggsed1[1], 'z'), True)
         self.assertEqual(hasattr(aggsed1[1], 's24'), True)
         self.assertEqual(aggsed1[1][0].xunit, 'micron')
+
+
+    def testReadToAggregateSed_complex(self):
+
+        column_map = {"ucfht":(3823.0,"AA","mag","errU"),
+                      "Bsub":(4459.7,"AA","mag","errB"),
+                      "Vsub":(5483.8,"AA","mag","errV"),
+                      "gsub":(4779.6,"AA","mag","errg"),
+                      "rsub":(6295.1,"AA","mag","errR"),
+                      "isub":(7640.8,"AA","mag","errI"),
+                      "zsub":(9036.9,"AA","mag","errz"),
+                      "j":(12491.0,"AA","mag","errJ"),
+                      "Ks":(21590.4,"AA","mag","errK"),
+                      "irac3.6":(36000.0,"AA","mag","err3.6"),
+                      "irac4.5":(45000.0,"AA","mag","err4.5"),
+                      "irac5.8":(58000.0,"AA","mag","err5.8"),
+                      "irac8.0":(80000.0,"AA","mag","err8.0"),
+                      "mips24.0":(240000.0,"AA","mag","err24")
+                      }
+        aggsed = io.load_cat(self._rootdir+"phot-cat-mags.ascii", column_map)
+
+        self.assertEqual(aggsed.z[0], 0.668)
+        self.assertEqual(aggsed.z[2], 0.529)
+        self.assertEqual(aggsed[0].z, 0.668)
+        self.assert_(numpy.isnan(aggsed[1][5].y))
+        self.assertEqual(aggsed[0].id, 2051)
 
 
     def testIncludeNames(self):

@@ -1,5 +1,6 @@
 import numpy
 import unittest
+from sedstacker.exceptions import SegmentError
 from sedstacker.sed import Sed, PhotometricPoint, find_range
 from math import log10
 
@@ -149,6 +150,15 @@ class TestSed(unittest.TestCase):
         norm_sed = sed.normalize_by_int()
 
         self.assert_(hasattr(norm_sed, 'norm_constant'))
+
+
+    def test_normalize_by_int_raise_SegmentError(self):
+
+        sed = Sed(x = self._x, y = self._y, yerr = self._yerr,
+                  xunit = self._xunit, yunit = self._yunit,
+                  z = self._z)
+
+        self.assertRaises(SegmentError, sed.normalize_by_int, 4000.0, 5000.0)
 
 
     def test_toarray(self):

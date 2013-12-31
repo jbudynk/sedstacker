@@ -58,15 +58,22 @@ class TestSegment(unittest.TestCase):
                    z = self._z)
         norm_sed = sed.normalize_by_int()
 
-        astlib_sed = astsed.SED(wavelength = self._x, flux = self._y)
-        astlib_sed.normalise()
+        norm_const = 1.0/numpy.trapz(abs(self._y),self._x)
+        flux = self._y*norm_const
+        fluxerr = self._yerr*norm_const
 
-        norm_sed_cfTrue = sed.normalize_by_int(correct_flux=True, z0 = 0.5)
-        self.assertNotEqual(norm_sed_cfTrue.norm_constant, norm_sed.norm_constant)
+        self.assertEqual(norm_sed.norm_constant, norm_const)
+        self.assertEqual(norm_sed[2].y, flux[2])
+
+#        astlib_sed = astsed.SED(wavelength = self._x, flux = self._y)
+#        astlib_sed.normalise()
+
+#        norm_sed_cfTrue = sed.normalize_by_int(correct_flux=True, z0 = 0.5)
+#        self.assertNotEqual(norm_sed_cfTrue.norm_constant, norm_sed.norm_constant)
 
 
-        self.assertEqual(norm_sed[2].y, astlib_sed.flux[2])
-        self.assertAlmostEqual(norm_sed[1].y / norm_sed.norm_constant,  sed[1].y)
+#        self.assertEqual(norm_sed[2].y, astlib_sed.flux[2])
+#        self.assertAlmostEqual(norm_sed[1].y / norm_sed.norm_constant,  sed[1].y)
 
 
     def test_norm_at_point_spectrum1(self):

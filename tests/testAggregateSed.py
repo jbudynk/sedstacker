@@ -136,7 +136,7 @@ class TestAggregateSed(unittest.TestCase):
 
 
     def test_norm_at_point(self):
-        pass
+        self.assert_(True, "Not implemented yet")
 
 
     def test_remove_segment(self):

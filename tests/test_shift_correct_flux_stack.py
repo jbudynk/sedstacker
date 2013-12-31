@@ -1,5 +1,5 @@
-#
 import time
+import sedstacker
 from sedstacker.sed import Spectrum, Sed, AggregateSed, stack
 from sedstacker.io import load_sed
 from matplotlib import pyplot as plt
@@ -9,7 +9,7 @@ import os
 
 start = time.clock()
 
-test_directory = "/data/vao/staff/jbudynk/python_project/sedstacker/tests/test_data/spectra/"
+test_directory = os.path.dirname(sedstacker.__file__)+"/tests/test_data/spectra/"
 directory = open(test_directory+'list.txt','r')
 files = [line.strip() for line in directory]
 directory.close()
