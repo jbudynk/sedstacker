@@ -197,38 +197,38 @@ class Spectrum(Segment):
 
         y0 = numpy.float_(y0)
         x0 = numpy.float_(x0)
+        flux = self.y
+        fluxerr = self.yerr
+
         dx = log10(x0) - 1.7 #so that dx is always one order lower than x0.
         spec_indices = find_range(self.x, x0-10**dx, x0+10**dx)
-
         if spec_indices == (-1,-1):
             logging.warning(' Normalization aborted.')
             raise OutsideRangeError
 
         if correct_flux:
-            fluxz = correct_flux_(self.x, self.y, self.z, z0)
-            try:
-                avg_flux = numpy.average(fluxz[spec_indices[0]:spec_indices[1]])
-            except FloatingPointError:
-                avg_flux = numpy.average(fluxz[spec_indices[0]])
-        else:
-            try:
-                avg_flux = numpy.average(self.y[spec_indices[0]:spec_indices[1]])
-            except FloatingPointError:
-                avg_flux = numpy.average(self.y[spec_indices[0]])
+            fluxz = correct_flux_(self.x, flux, self.z, z0)
+            flux = fluxz
+
+        try:
+            avg_flux = numpy.average(flux[spec_indices[0]:spec_indices[1]])
+        except FloatingPointError:
+            avg_flux = numpy.average(flux[spec_indices[0]])
 
         if norm_operator == 0:
             norm_constant = y0 / avg_flux
-            flux = self.y*norm_constant
-            fluxerr = self.yerr*norm_constant if self.yerr is not None else None
+            norm_flux = flux*norm_constant
+            norm_fluxerr = fluxerr*norm_constant if self.yerr is not None else None
         elif norm_operator == 1:
             norm_constant = y0 - avg_flux
-            flux = self.y + norm_constant
-            fluxerr = self.yerr
+            norm_flux = flux + norm_constant
+            norm_fluxerr = fluxerr
         else:
-            raise ValueError('Unrecognized norm_operator. keyword \'norm_operator\' must be either 0 (for multiply) or 1 (for addition)')
+            raise ValueError('Unrecognized norm_operator. keyword \'norm_operator\' must be either 0 (to multiply) or 1 (to add)')
 
-        norm_spectrum = Spectrum(x=self.x, y=flux, yerr=fluxerr,
+        norm_spectrum = Spectrum(x=self.x, y=norm_flux, yerr=norm_fluxerr,
                                  xunit=self.xunit, yunit=self.yunit, z=self.z)
+
         setattr(norm_spectrum, 'norm_constant', norm_constant)
 
         return norm_spectrum
@@ -238,17 +238,19 @@ class Spectrum(Segment):
 
         '''Normalises the Spectrum such that the area under the specified wavelength range is equal to 1.
 
+        Algorithm taken from astLib.astSED.normalise(); uses the Trapezoidal rule to estimate the integrated flux.
+
         Kwargs:
-            minWavelength (float or 'min'): minimum wavelength of range over which to normalise Spectrum
-            maxWavelength (float or 'max'): maximum wavelength of range over which to normalise Spectrum
+            minWavelength (float or 'min'): minimum wavelength of range over which to normalize Spectrum
+            maxWavelength (float or 'max'): maximum wavelength of range over which to normalize Spectrum
             correct_flux (bool): switch used to correct for SEDs that were shifted to some redshift without taking into account flux brightening/dimming due to redshift
             z0 (float or int): The original redshift of the source. Used if correct_flux = True.
 
-        The Spectrum must have > 4 points
+        The Spectrum must have at least 2 points between minWavelength and maxWavelength.
         '''
 
-        if len(self.x) < 4:
-            raise SegmentError('Spectrum object must have 4 or more points for normalize_at_point() to work.')
+        flux = self.y
+        fluxerr = self.yerr
 
         if minWavelength == 'min':
             minWavelength=self.x.min()
@@ -260,21 +262,18 @@ class Spectrum(Segment):
         totalCut = numpy.logical_and(lowCut, highCut)
         sedWavelengthSlice = self.x[totalCut]
 
+        if len(sedWavelengthSlice) < 2:
+            raise SegmentError('Spectrum object must have at least 2 points between minWavelength and maxWavelength.')
+
         if correct_flux:
-            # shift the SED back to original redshift z0.
-            # calculate fluxz0, the flux of the SED at z0.
-            # what about the yerr?
-            fluxz = correct_flux_(self.x, self.y, self.z, z0)
-            sedFluxSlice = fluxz[totalCut]
-            norm_constant = 1.0/numpy.trapz(abs(sedFluxSlice), sedWavelengthSlice)
-            yerr = self.yerr*norm_constant if self.yerr is not None else None
-            norm_segment = Sed(x=self.x, y=fluxz*norm_constant, yerr=yerr*norm_constant,
-                                   xunit=xunit, yunit=yunit, z=self.z)
-        else:
-            sedFluxSlice = self.y[totalCut]
-            norm_constant = 1.0/numpy.trapz(abs(sedFluxSlice), sedWavelengthSlice)
-            yerr = self.yerr*norm_constant if self.yerr is not None else None
-            norm_segment = Spectrum(x=self.x, y=self.y*norm_constant, yerr=yerr,
+            fluxz = correct_flux_(self.x, flux, self.z, z0)
+            flux = fluxz
+
+        sedFluxSlice = flux[totalCut]
+        norm_constant = 1.0/numpy.trapz(abs(sedFluxSlice), sedWavelengthSlice)
+        norm_flux = flux*norm_constant
+        norm_fluxerr = fluxerr*norm_constant if fluxerr is not None else None
+        norm_segment = Spectrum(x=self.x, y=norm_flux, yerr=norm_fluxerr,
                                 xunit=self.xunit, yunit=self.yunit, z=self.z)
 
         setattr(norm_segment, 'norm_constant', norm_constant)
@@ -415,6 +414,8 @@ class Sed(Segment, list):
         '''Normalizes the SED such that at spectral coordinate x0,
            the flux of the SED is y0.
 
+        Uses nearest-neighbor interpolation.
+
         Args:
             x0 (float, int): The spectral coordinate to normalize the SED at
             y0 (float, int): The flux value to normalize the SED to
@@ -434,7 +435,7 @@ class Sed(Segment, list):
             z0 (float or int): The original redshift of the source.
             Used only if correct_flux = True.
 
-        Requires that the SED has at least 4 photometric points'''
+            '''
 
         sedarray = self.toarray()
         spec = sedarray[0]
@@ -442,9 +443,6 @@ class Sed(Segment, list):
         fluxerr = sedarray[2]
         xunit = sedarray[3]
         yunit = sedarray[4]
-
-        if len(spec) < 4:
-            raise SegmentError('Sed object must have 4 or more points for normalize_at_point() to work.')
 
         if correct_flux:
             fluxz = correct_flux_(spec, flux, self.z, z0)
@@ -474,13 +472,16 @@ class Sed(Segment, list):
 
         '''Normalises the SED such that the area under the specified wavelength range is equal to 1.
 
+        Algorithm adopted from astLib.astSED.normalise(); uses the Trapezoidal rule to estimate the integrated flux.
+
         Kwargs:
             minWavelength (float or 'min'): minimum wavelength of range over which to normalise SED
             maxWavelength (float or 'max'): maximum wavelength of range over which to normalise SED
             correct_flux (bool): switch used to correct for SEDs that were shifted to some redshift without taking into account flux brightening/dimming due to redshift
             z0 (float or int): The original redshift of the source. Used if correct_flux = True.
 
-        The SED must have > 4 points.
+        The SED must have at least 2 points between minWavelength and maxWavelength.
+
         '''
 
         sedarray = self.toarray()
@@ -490,34 +491,29 @@ class Sed(Segment, list):
         xunit = sedarray[3]
         yunit = sedarray[4]
 
-        if len(spec) < 4:
-            raise SegmentError('Sed object must have 4 or more points to use normalize_by_int().')
-
         if minWavelength == 'min':
             minWavelength=spec.min()
         if maxWavelength == 'max':
             maxWavelength=spec.max()
 
-        lowCut = numpy.greater(spec, minWavelength)
-        highCut = numpy.less(spec, maxWavelength)
+        lowCut = numpy.greater_equal(spec, minWavelength)
+        highCut = numpy.less_equal(spec, maxWavelength)
         totalCut = numpy.logical_and(lowCut, highCut)
         sedWavelengthSlice = spec[totalCut]
+
+        if len(sedWavelengthSlice) < 2:
+            raise SegmentError('Sed object must have at least 2 points between minWavelength and maxWavelength.')
+
         if correct_flux:
-            # shift the SED back to original redshift z0.
-            # calculate fluxz0, the flux of the SED at z0.
-            # what about the yerr?
             fluxz = correct_flux_(spec, flux, self.z, z0)
-            sedFluxSlice = fluxz[totalCut]
-            norm_constant = 1.0/numpy.trapz(abs(sedFluxSlice), sedWavelengthSlice)
-            norm_segment = Sed(x = spec, y = fluxz*norm_constant, yerr = fluxerr*norm_constant,
-                               xunit = xunit, yunit = yunit, z = self.z)
-        else:
-            sedFluxSlice = flux[totalCut]
-            norm_constant = 1.0/numpy.trapz(abs(sedFluxSlice), sedWavelengthSlice)
-            norm_fluxerr = fluxerr*norm_constant if fluxerr is not None else None
-            norm_flux = flux*norm_constant
-            norm_segment = Sed(x=spec, y=norm_flux, yerr=norm_fluxerr,
-                               xunit=xunit, yunit=yunit, z=self.z)
+            flux = fluxz
+
+        sedFluxSlice = flux[totalCut]
+        norm_constant = 1.0/numpy.trapz(abs(sedFluxSlice), sedWavelengthSlice)
+        norm_flux = flux*norm_constant
+        norm_fluxerr = fluxerr*norm_constant if fluxerr is not None else None
+        norm_segment = Sed(x=spec, y=norm_flux, yerr=norm_fluxerr,
+                           xunit=xunit, yunit=yunit, z=self.z)
 
         setattr(norm_segment, 'norm_constant', norm_constant)
         
@@ -736,7 +732,7 @@ class AggregateSed(list):
         raise NotImplemented('filter() is not implemented yet.')
 
 
-    def normalize_at_point(self, x0, y0, correct_flux=False, z0=None):
+    def normalize_at_point(self, x0, y0, norm_operator=0, correct_flux=False, z0=None):
         '''Normalizes the SED such that at spectral coordinate x0,
            the flux of the SED is y0.
 
@@ -771,13 +767,13 @@ class AggregateSed(list):
 
         for segment in self.segments:
             try:
-                norm_seg = segment.normalize_at_point(x0, y0, correct_flux=correct_flux, z0=z0)
+                norm_seg = segment.normalize_at_point(x0, y0, norm_operator=norm_operator, correct_flux=correct_flux, z0=z0)
                 norm_segments.append(norm_seg)
             except OutsideRangeError:
-                logging.warning(' Excluding AgggregateSed[%d] from the normalized AggregateSed.\n' % self.index(segment))
+                logging.warning(' Excluding AgggregateSed[%d] from the normalized AggregateSed.' % self.index(segment))
                 pass
             except SegmentError, e:
-                logging.warning(' Excluding AggregateSed[%d] from the normalized AggregateSed\n' % self.index(segment))
+                logging.warning(' Excluding AggregateSed[%d] from the normalized AggregateSed' % self.index(segment))
                 pass
 
         return AggregateSed(norm_segments)
@@ -809,9 +805,9 @@ class AggregateSed(list):
                                                     maxWavelength=maxWavelength,
                                                     correct_flux=correct_flux,
                                                     z0 = z0)
-            except SegmentError, e:
-                print 'Excluding AggregateSed[%d] from the normalized AggregateSed' % self.index(segment)
-                raise
+            except SegmentError:
+                logging.warning(' Excluding AggregateSed[%d] from the normalized AggregateSed' % self.index(segment))
+                pass
 
             norm_segments.append(norm_seg)
 
@@ -945,7 +941,9 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
 
     Returns:
         Sed object, with attribute 'count'. Attributes z, xunit and yunit are taken from the first Segment in the list.
-            counts - number of flux values combined per binsize. plotting 'counts' against 'x' gives a histogram of the flux counts per spectral bin. '''
+            counts - number of flux values combined per binsize. plotting 'counts' against 'x' gives a histogram of the flux counts per spectral bin.
+
+    '''
 
 
     if type(binsize) not in (types.FloatType, types.IntType, numpy.float_, numpy.int_):
@@ -1035,12 +1033,15 @@ def shift(spec, flux, z, z0):
 
     if z is None:
         raise NoRedshiftError
-    if type(z0) not in (types.FloatType, types.IntType):
+    if type(z0) not in (types.FloatType, numpy.float_, types.IntType, numpy.int_):
         raise InvalidRedshiftError(0)
-    if type(z) not in (types.FloatType, types.IntType):
+    if type(z) not in (types.FloatType, numpy.float_, types.IntType, numpy.int_):
         raise InvalidRedshiftError(0)
     if z0 < 0:
         raise InvalidRedshiftError(1)
+
+    spec = numpy.ma.masked_array(spec, numpy.isnan(spec))
+    flux = numpy.ma.masked_array(flux, numpy.isnan(flux))
 
     spec_z0 = (1 + z0) * spec / (1+z)
     
@@ -1049,7 +1050,7 @@ def shift(spec, flux, z, z0):
     
     flux_z0 = flux*z_total_flux/z0_total_flux
     
-    return spec_z0, flux_z0
+    return spec_z0.filled(numpy.nan), flux_z0.filled(numpy.nan)
 
 
 def correct_flux_(spec, flux, z, z0):
