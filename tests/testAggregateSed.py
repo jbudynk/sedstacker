@@ -1,5 +1,7 @@
 import numpy
 import unittest
+import warnings
+import logging
 from sedstacker.sed import AggregateSed, Sed, Spectrum, Segment
 from sedstacker.exceptions import *
 
@@ -136,7 +138,33 @@ class TestAggregateSed(unittest.TestCase):
 
 
     def test_norm_at_point(self):
-        self.assert_(True, "Not implemented yet")
+
+        segment1 = Spectrum(x = numpy.arange(1000,10000,10),
+                            y = numpy.arange(1000,10000,10),
+                            yerr=numpy.arange(1000,10000,10)*.01,
+                            z=1.0)
+        segment2 = Sed(x=numpy.arange(1000,10000,500),
+                       y=numpy.arange(1000,10000,500),
+                       yerr=numpy.arange(1000,10000,500)*.01)
+        segment3 = Sed(x=numpy.arange(1000,10000,500),
+                       y=numpy.arange(1000,10000,500),
+                       yerr=numpy.arange(1000,10000,500)*.01,
+                       z = 0.35)
+        segment4 = Spectrum(x = numpy.arange(1000,10000,10),
+                            y = numpy.arange(1000,10000,10),
+                            yerr=numpy.arange(1000,10000,10)*.01,
+                            z=1.0)
+
+        aggsed = AggregateSed([segment1, segment2, segment3, segment4])
+        norm_aggsed = aggsed.normalize_at_point(5000,1000)
+
+        sedarray = segment3.toarray()
+        control_norm_aggsed_segment3 = sedarray[1]*0.2
+
+        self.assertEqual(norm_aggsed[1][8].y, 1000)
+        sedarray = norm_aggsed[2].toarray()
+        numpy.testing.assert_array_almost_equal(sedarray[1], control_norm_aggsed_segment3)
+        self.assertEqual(norm_aggsed[0].norm_constant, 0.2)
 
 
     def test_remove_segment(self):

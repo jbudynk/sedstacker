@@ -97,7 +97,7 @@ class Spectrum(Segment):
             yunit (str): The flux coordinates. Default value is 'erg/s/cm**2/AA'.
             z (float): The redshift of the Sed. Default value is None.'''
 
-        yerrtypes = (types.FloatType, types.IntType)
+        yerrtypes = (types.FloatType, numpy.float_, types.IntType, numpy.int_)
 
         if len(x) != len(y):
             raise SegmentError('x and y must be of the same length.')
@@ -159,34 +159,39 @@ class Spectrum(Segment):
                         xunit=self.xunit, yunit=self.yunit, z=z0)
 
 
-    def normalize_at_point(self, x0, y0, norm_operator=0, correct_flux=False, z0=None):
+    def normalize_at_point(self, x0, y0, dx=50, norm_operator=0, correct_flux=False, z0=None):
 
         '''Normalizes the SED such that at spectral coordinate x0,
         the flux of the SED is y0.
 
-        normalize_at_point() takes the average flux within a range of spectral values "dx" = log10(x0) - 1.7 (so that dx is always one order lower than x0) centered on x0 as the observed flux:
+        normalize_at_point() takes the average flux within a range of spectral values [x0-dx, x0+dx] centered on x0 as the observed flux at x0.
 
-            normalization_constant = y0 / avg(observed_flux[dx])
+        >>> # initializing dummy spectrum
+        >>> x = numpy.arange(3000,9500,0.5)
+        >>> y = numpy.random.rand(x.size)
+        >>> yerr = y*0.01
+        >>> spec = Spectrum(x=x,y=y,yerr=yerr,z=0.3)
+        >>>
+        >>> # normalize the spectrum "spec" to 1.0 erg/s/cm**2/AA at 3600.0 AA
+        >>> norm_spec = spec.normalize_at_point(3600.0, 1.0, dx=70)
+        >>> norm_spec.y
+        array([ 1.13493095,  0.40622771,  0.61081693, ...,  1.87997373,
+                0.48542037,  0.02411532])
+        >>>
+        >>> norm_spec.norm_constant
+        2.0265575749283653
 
         Args:
-            x0 (float, int): The spectral coordinate to normalize the SED at
-            y0 (float, int): The flux value to normalize the SED to
+            x0 (float, int): The spectral coordinate to normalize the SED at. x0 is in Angstroms.
+            y0 (float, int): The flux value to normalize the SED to.
 
         Kwargs:
-
-            correct_flux (bool): kwarg to correct for flux dimming/brightening
-            due to redshift. Meant for SEDs that were shifted only by wavelength
-            (i.e. the flux was not corrected for the intrinsic
-            dimming/brightening due to redshift). If correct_flux = True, then
-            the flux is corrected so that the integrated flux at the current
-            redshift is equal to that at the original redshift.Default value is False.
-
+            dx (float, int): The number of spectral points to the left and right of x0, over which the average flux is measured. If no points fall within the range [x0-dx,x=+dx], then OutsideRangeError is raised, and the normalization is aborted.
             norm_operator (int): operator used for scaling the spectrum to y0.
-            0 = multiply the flux by the normalization constant
-            1 = add the normalization constant to the flux
-
-            z0 (float or int): The original redshift of the source.
-            Used only if correct_flux = True.
+                0 = multiply the flux by the normalization constant
+                1 = add the normalization constant to the flux
+            correct_flux (bool): kwarg to correct for flux dimming/brightening due to redshift. Meant for SEDs that were shifted only by wavelength (i.e. the flux was not corrected for the intrinsic dimming/brightening due to redshift). If correct_flux = True, then the flux is corrected so that the integrated flux at the current redshift is equal to that at the original redshift.Default value is False.
+            z0 (float or int): The original redshift of the source. Used only if correct_flux = True.
 
         Requires that the SED has at least 4 photometric points'''
 
@@ -197,14 +202,21 @@ class Spectrum(Segment):
 
         y0 = numpy.float_(y0)
         x0 = numpy.float_(x0)
+        dx = numpy.float_(dx)
         flux = self.y
         fluxerr = self.yerr
 
-        dx = log10(x0) - 1.7 #so that dx is always one order lower than x0.
-        spec_indices = find_range(self.x, x0-10**dx, x0+10**dx)
-        if spec_indices == (-1,-1):
-            logging.warning(' Normalization aborted.')
+        spec_indices = find_range(self.x, x0-dx, x0+dx+1)
+        if spec_indices == (-1, -1):
             raise OutsideRangeError
+        elif spec_indices[0] == -1:
+            spec_indices[0] = min(self.x)
+        elif spec_indices[1] == -1:
+            spec_indices[1] = max(self.x)
+        if (x0-dx < min(self.x)) or (x0+dx > max(self.x)):
+            high_lim = min((x0+dx, max(self.x)))
+            low_lim = max((x0+dx, min(self.x)))
+            logging.warning(' Spectrum does not cover full range used for determining normalization constant. Spectral range used: [{low}:{high}]'.format(low=repr(low_lim), high=repr(high_lim)))
 
         if correct_flux:
             fluxz = correct_flux_(self.x, flux, self.z, z0)
@@ -236,7 +248,7 @@ class Spectrum(Segment):
 
     def normalize_by_int(self, minWavelength='min', maxWavelength='max', correct_flux=False, z0=None):
 
-        '''Normalises the Spectrum such that the area under the specified wavelength range is equal to 1.
+        '''Normalizes the Spectrum such that the area under the specified wavelength range is equal to 1.
 
         Algorithm taken from astLib.astSED.normalise(); uses the Trapezoidal rule to estimate the integrated flux.
 
@@ -718,11 +730,11 @@ class AggregateSed(list):
                 shifted_seg = segment.shift(z0, correct_flux = correct_flux)
                 shifted_segments.append(shifted_seg)
             except NoRedshiftError:
-                logging.info(' Excluding AggregateSed[%d] from the shifted AggregateSed.' % self.index(segment))
+                logging.warning(' Excluding AggregateSed[%d] from the shifted AggregateSed.' % self.index(segment))
                 pass
 
             except InvalidRedshiftError:
-                logging.info(' Excluding AggregateSed[%d] from the shifted AggregateSed.' % self.index(segment))
+                logging.warning(' Excluding AggregateSed[%d] from the shifted AggregateSed.' % self.index(segment))
                 pass
 
         return AggregateSed(shifted_segments)
@@ -741,19 +753,11 @@ class AggregateSed(list):
             y0 (float, int): The flux value to normalize the SED to
 
         Kwargs:
-            correct_flux (bool): kwarg to correct for flux dimming/brightening
-            due to redshift. Meant for SEDs that were shifted only by wavelength
-            (i.e. the flux was not corrected for the intrinsic
-            dimming/brightening due to redshift). If correct_flux = True, then
-            the flux is corrected so that the integrated flux at the current
-            redshift is equal to that at the original redshift.Default value is False.
-
+            correct_flux (bool): kwarg to correct for flux dimming/brightening due to redshift. Meant for SEDs that were shifted only by wavelength (i.e. the flux was not corrected for the intrinsic dimming/brightening due to redshift). If correct_flux = True, then the flux is corrected so that the integrated flux at the current redshift is equal to that at the original redshift.Default value is False.
             norm_operator (int): operator used for scaling the spectrum to y0.
             0 = multiply the flux by the normalization constant
             1 = add the normalization constant to the flux
-
-            z0 (float or int): The original redshift of the source.
-            Used only if correct_flux = True.
+            z0 (float or int): A list or array of the original redshifts of the sources. The redshifts must be in the same order as the Segments appear in the AggregateSed (i.e. assuming aggsed is an AggregateSed, z0[0] is the original redshift of aggsed[0], z0[1] is the original redshift of aggsed[1], etc.). Used only if correct_flux = True.
 
         Raises:
             OutisdeRange: If a Sed's or Spectrum's spectral range does not cover point x0,
@@ -763,11 +767,19 @@ class AggregateSed(list):
 
         Requires that the Seds has at least 4 photometric points'''
 
+        if len([z0]) == 1:
+            z0 = [z0]*len(self.segments)
+        elif len(z0) != len(self.segments):
+            raise ValueError('Length of z0 does not match the length of AggregateSed.')
+
         norm_segments = []
 
-        for segment in self.segments:
+        for i, segment in enumerate(self.segments):
             try:
-                norm_seg = segment.normalize_at_point(x0, y0, norm_operator=norm_operator, correct_flux=correct_flux, z0=z0)
+                norm_seg = segment.normalize_at_point(x0, y0,
+                                                      norm_operator=norm_operator,
+                                                      correct_flux=correct_flux,
+                                                      z0=z0[i])
                 norm_segments.append(norm_seg)
             except OutsideRangeError:
                 logging.warning(' Excluding AgggregateSed[%d] from the normalized AggregateSed.' % self.index(segment))
@@ -786,7 +798,7 @@ class AggregateSed(list):
             minWavelength (float or 'min'): minimum wavelength of range over which to normalise SED
             maxWavelength (float or 'max'): maximum wavelength of range over which to normalise SED
             correct_flux (bool): switch used to correct for SEDs that were shifted to some redshift without taking into account flux brightening/dimming due to redshift
-            z0 (float or int): The original redshift of the source. Used if correct_flux = True.
+            z0 (float or int): A list or array of the original redshifts of the sources. The redshifts must be in the same order as the Segments appear in the AggregateSed (i.e. assuming aggsed is an AggregateSed, z0[0] is the original redshift of aggsed[0], z0[1] is the original redshift of aggsed[1], etc.). Used only if correct_flux = True.
         Raises:
             OutisdeRangeError: If a Sed's or Spectrum's spectral range does not cover point x0,
             then the segment is excluded from the returned normalized AggregateSed.
@@ -797,14 +809,19 @@ class AggregateSed(list):
 
         '''
 
+        if len([z0]) == 1:
+            z0 = [z0]*len(self.segments)
+        elif len(z0) != len(self.segments):
+            raise ValueError('Length of z0 does not match length of AggregateSed.')
+
         norm_segments = []
 
-        for segment in self.segments:
+        for i, segment in enumerate(self.segments):
             try:
                 norm_seg = segment.normalize_by_int(minWavelength=minWavelength,
                                                     maxWavelength=maxWavelength,
                                                     correct_flux=correct_flux,
-                                                    z0 = z0)
+                                                    z0 = z0[i])
             except SegmentError:
                 logging.warning(' Excluding AggregateSed[%d] from the normalized AggregateSed' % self.index(segment))
                 pass
@@ -1071,4 +1088,4 @@ def find_range(array, a, b):
     if start == end:
         return (-1, -1)
     else:
-        return (start, end-1)
+        return [start-1, end]

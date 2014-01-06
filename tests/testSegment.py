@@ -83,7 +83,7 @@ class TestSegment(unittest.TestCase):
         
         norm_spectrum = spectrum.normalize_at_point(5000.0, 1e-13)
 
-        self.assertEqual('%.4f' % norm_spectrum.norm_constant, repr(0.0342))
+        self.assertAlmostEqual(norm_spectrum.norm_constant, 0.034145, delta=0.000001)
         self.assertEqual(len(norm_spectrum.yerr), len(norm_spectrum.x))
         self.assert_(numpy.isnan(norm_spectrum.yerr[1]))
 
@@ -93,13 +93,23 @@ class TestSegment(unittest.TestCase):
         spectrum = Spectrum(x = range(0, 101),
                             y = range(0, 101))
         
-        norm_spectrum = spectrum.normalize_at_point(20, 50)
+        norm_spectrum = spectrum.normalize_at_point(20, 50, dx=10)
 
         control_norm_constant = 50.0/20.0
         control_norm_spectrum_y = spectrum.y*control_norm_constant
 
         self.assertEqual(norm_spectrum.norm_constant, 2.5)
         numpy.testing.assert_array_almost_equal(norm_spectrum.y, control_norm_spectrum_y)
+
+
+    def test_norm_at_point_spectrum3(self):
+        
+        spectrum = Spectrum(x = range(0, 101),
+                            y = range(0, 101))
+        norm_spectrum = spectrum.normalize_at_point(20, 50, dx=50)
+        control_avg_flux = 35.0
+        control_norm_constant = 50.0/control_avg_flux
+        self.assertEqual(norm_spectrum.norm_constant, control_norm_constant)
 
 
     def test_shift_sed(self):

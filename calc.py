@@ -1,6 +1,7 @@
 import numpy
 import math
 import types
+import warnings
 from sedstacker.exceptions import SegmentError
 
 # to get times:
@@ -47,6 +48,8 @@ def binup(y, x, xarr, statistic, binsize, fill, yerr, logbin = False):
         raise ValueError('kwarg fill must be \'fill\' or \'remove\'.')
 
     x, xarr, y, m_yerr, nx, xbin, yarr, outerr, count, skipit = setup_binup_arrays(y, x, xarr, binsize, yerr, logbin = logbin)
+
+    warnings.simplefilter("ignore", UserWarning)
 
     for i in range(nx):
         high_lim = xarr[i] + xbin
