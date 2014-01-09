@@ -223,7 +223,7 @@ class Spectrum(Segment):
             flux = fluxz
 
         try:
-            avg_flux = numpy.average(flux[spec_indices[0]:spec_indices[1]])
+            avg_flux = numpy.mean(flux[spec_indices[0]:spec_indices[1]])
         except FloatingPointError:
             avg_flux = flux[spec_indices[0]]
 
