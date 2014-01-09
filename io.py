@@ -164,14 +164,14 @@ def load_cat(filename, column_map, fmt='ascii', **kwargs):
         for i in range(len(x)):
             # for flux and fluxerrs with null values,
             # set the value to numpy.nan
+            if y[i] in NONE_VALS:
+                continue
+            else:
+                y[i] = numpy.float_(y[i])
             if yerr[i] in NONE_VALS:
                  yerr[i] = numpy.nan
             else:
                 yerr[i] = numpy.float_(yerr[i])
-            if y[i] in NONE_VALS:
-                y[i] = numpy.nan
-            else:
-                y[i] = numpy.float_(y[i])
             sed.add_point(PhotometricPoint(x=x[i],y=y[i],yerr=yerr[i],xunit=xunit[i],yunit=yunit[i]))
 
         seds.append(sed)
