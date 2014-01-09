@@ -2,6 +2,7 @@ import numpy
 import os
 import logging
 import sedstacker
+import unittest
 from sedstacker import io
 from sedstacker.sed import AggregateSed, Sed, stack
 import matplotlib.pyplot as plt
@@ -44,18 +45,34 @@ for i, sed in enumerate(aggsed):
 #plt.show()
 
 restframe_aggsed = aggsed.shift(0)
+
 #plt.loglog(restframe_aggsed.x[0],restframe_aggsed.y[0],'o',restframe_aggsed.x[1],restframe_aggsed.y[1],'o',restframe_aggsed.x[2],restframe_aggsed.y[2],'o',restframe_aggsed.x[3],restframe_aggsed.y[3],'o',restframe_aggsed.x[4],restframe_aggsed.y[4],'o',restframe_aggsed.x[5],restframe_aggsed.y[5],'o')
 #plt.show()
 
 norm_point_aggsed = restframe_aggsed.normalize_at_point(5000.0, 1e-5, norm_operator=1)
 print ''
-norm_int_aggsed = restframe_aggsed.normalize_by_int(minWavelength=4000.0,maxWavelength=6000.0)
+norm_int_aggsed = restframe_aggsed.normalize_by_int()
 
-plt.plot(restframe_aggsed.x[0],restframe_aggsed.y[0],'ko', norm_point_aggsed.x[0],norm_point_aggsed.y[0],'go', norm_int_aggsed.x[0],norm_int_aggsed.y[0],'ro')
+plt.plot(restframe_aggsed.x[1],restframe_aggsed.y[1],'ko', norm_point_aggsed.x[1],norm_point_aggsed.y[1],'go', norm_int_aggsed.x[1],norm_int_aggsed.y[1],'ro')
 plt.legend(('restframe','norm_at_point','norm_by_int'), fontsize='x-small', loc=2)
 plt.show()
 
+stack_i = stack(norm_int_aggsed, 0.1, 'wavg', fill='remove', logbin=True)
+stack_p = stack(norm_point_aggsed, 0.1, 'wavg', fill='remove', logbin=True)
+stack_rf = stack(restframe_aggsed, 0.1, 'wavg', fill='remove', logbin=True)
 
-stack_ = stack(aggsed, 100.0, 'wavg', logbin=True)
+stack_arri = stack_i.toarray()
+stack_arrp = stack_p.toarray()
+stack_arrrf = stack_rf.toarray()
+
+plt.loglog(stack_arrrf[0],stack_arrrf[1],'ko',stack_arrp[0],stack_arrp[1],'go',stack_arri[0],stack_arri[1],'ro')
+plt.legend(('restframe','norm_at_point','norm_by_int'),fontsize='x-small', loc=2)
+plt.show()
+
+print len(stack_arri[0])
+print len(stack_arrp[0])
+print len(stack_arrrf[0])
+minwl = 1119.47291362
+maxwl = 143884.892086
 
 
