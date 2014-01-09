@@ -37,7 +37,7 @@ def binup(y, x, xarr, statistic, binsize, fill, yerr, logbin = False):
     if fill not in ('remove','fill'):
         raise ValueError('kwarg fill must be \'fill\' or \'remove\'.')
 
-    x, xarr, y, m_yerr, nx, xbin, yarr, outerr, count, skipit = setup_binup_arrays(y, x, xarr, binsize, yerr, logbin = logbin)
+    x, xarr, y, yerr, nx, xbin, yarr, outerr, count, skipit = setup_binup_arrays(y, x, xarr, binsize, yerr, logbin = logbin)
 
     warnings.simplefilter("ignore", UserWarning)
 
@@ -46,14 +46,14 @@ def binup(y, x, xarr, statistic, binsize, fill, yerr, logbin = False):
         low_lim = xarr[i] - xbin
         # the next 2 lines are very inefficient - for 6 sources, takes ~12.5 secs
         #y_bin = y[(x >= low_lim) & (x <= high_lim)]
-        #yerr_bin = m_yerr[(x >= low_lim) & (x<= high_lim)]
+        #yerr_bin = yerr[(x >= low_lim) & (x<= high_lim)]
 
         # This method takes ~10.5 seconds for 6 sources
         low_cut = numpy.greater_equal(x, low_lim)
         high_cut = numpy.less_equal(x, high_lim)
         total_cut = numpy.logical_and(low_cut, high_cut)
         y_bin = y[total_cut]
-        yerr_bin = m_yerr[total_cut]
+        yerr_bin = yerr[total_cut]
         count[i] = len(y_bin)
 
         if count[i] >= 1:
@@ -83,7 +83,7 @@ def wavg_bin(y_bin, yerr_bin, count):
 
     #if len(yerr_bin) == count:
     weights = 1.0/yerr_bin**2
-    yarr = numpy.average(y_bin, weights=weights)
+    yarr = numpy.ma.average(y_bin, weights=weights)
     outerr = numpy.sqrt((yerr_bin**2).sum())
     # outerr[i] = numpy.std(y_bin)) #take either the stddev of y, or sum in quadrature of the errors
     # If any NaN's exist in yerr_bin, then their corresponding fluxes
@@ -93,7 +93,7 @@ def wavg_bin(y_bin, yerr_bin, count):
     count = len(numpy.where(yerr_bin.mask == False)[0])
 
     #else:
-    #    yarr = numpy.average(y_bin)
+    #    yarr = numpy.mean(y_bin)
     #    outerr = numpy.sqrt((yerr_bin**2).sum())
     #    print 'len(yerr) does not match len(y). Computing average instead.'
     
@@ -102,7 +102,7 @@ def wavg_bin(y_bin, yerr_bin, count):
 
 def avg_bin(y_bin, yerr_bin, count):
 
-    yarr = numpy.average(y_bin)
+    yarr = numpy.mean(y_bin)
     # outerr[i] = numpy.std(y_bin)
     outerr = numpy.sqrt((yerr_bin**2).sum())
 
@@ -148,8 +148,8 @@ def setup_binup_arrays(y, x, xarr, binsize, yerr, logbin=False):
 
     xbin = binsize/2.0
     nx = len(xarr)
-    y = numpy.array(y)
-    m_yerr = numpy.ma.masked_array(yerr,numpy.isnan(yerr))
+    y = numpy.ma.masked_invalid(y)
+    yerr = numpy.ma.masked_invalid(yerr)
 
     # to be binned y-values and y-error values
     yarr = xarr*0
@@ -158,7 +158,7 @@ def setup_binup_arrays(y, x, xarr, binsize, yerr, logbin=False):
 
     skipit = numpy.ones(len(yarr))
 
-    return x, xarr, y, m_yerr, nx, xbin, yarr, outerr, count, skipit
+    return x, xarr, y, yerr, nx, xbin, yarr, outerr, count, skipit
 
 
 def smooth(arr, smooth_binsize):
