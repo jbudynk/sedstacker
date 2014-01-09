@@ -8,7 +8,7 @@ from bisect import bisect_left, bisect_right
 
 from astropy.io import ascii
 from astropy.table import Table
-from scipy import interpolate
+from scipy import interpolate, integrate
 
 from sedstacker import calc
 from sedstacker.exceptions import NoRedshiftError, InvalidRedshiftError, SegmentError, OutsideRangeError, NotASegmentError, PreExistingFileError
@@ -203,7 +203,7 @@ class Spectrum(Segment):
         y0 = numpy.float_(y0)
         x0 = numpy.float_(x0)
         dx = numpy.float_(dx)
-        flux = self.y
+        flux = numpy.ma.masked_invalid(self.y)
         fluxerr = self.yerr
 
         spec_indices = find_range(self.x, x0-dx, x0+dx+1)
@@ -225,7 +225,7 @@ class Spectrum(Segment):
         try:
             avg_flux = numpy.average(flux[spec_indices[0]:spec_indices[1]])
         except FloatingPointError:
-            avg_flux = numpy.average(flux[spec_indices[0]])
+            avg_flux = flux[spec_indices[0]]
 
         if norm_operator == 0:
             norm_constant = y0 / avg_flux
@@ -238,7 +238,7 @@ class Spectrum(Segment):
         else:
             raise ValueError('Unrecognized norm_operator. keyword \'norm_operator\' must be either 0 (to multiply) or 1 (to add)')
 
-        norm_spectrum = Spectrum(x=self.x, y=norm_flux, yerr=norm_fluxerr,
+        norm_spectrum = Spectrum(x=self.x, y=numpy.array(norm_flux), yerr=norm_fluxerr,
                                  xunit=self.xunit, yunit=self.yunit, z=self.z)
 
         setattr(norm_spectrum, 'norm_constant', norm_constant)
@@ -261,7 +261,7 @@ class Spectrum(Segment):
         The Spectrum must have at least 2 points between minWavelength and maxWavelength.
         '''
 
-        flux = self.y
+        flux = numpy.ma.masked_invalid(self.y)
         fluxerr = self.yerr
 
         if minWavelength == 'min':
@@ -283,8 +283,8 @@ class Spectrum(Segment):
 
         sedFluxSlice = flux[totalCut]
         norm_constant = 1.0/numpy.trapz(abs(sedFluxSlice), sedWavelengthSlice)
-        norm_flux = flux*norm_constant
-        norm_fluxerr = fluxerr*norm_constant if fluxerr is not None else None
+        norm_flux = numpy.array(flux*norm_constant)
+        norm_fluxerr = numpy.array(fluxerr*norm_constant if fluxerr is not None else None)
         norm_segment = Spectrum(x=self.x, y=norm_flux, yerr=norm_fluxerr,
                                 xunit=self.xunit, yunit=self.yunit, z=self.z)
 
@@ -498,7 +498,7 @@ class Sed(Segment, list):
 
         sedarray = self.toarray()
         spec = sedarray[0]
-        flux = sedarray[1]
+        flux = numpy.ma.masked_invalid(sedarray[1])
         fluxerr = sedarray[2]
         xunit = sedarray[3]
         yunit = sedarray[4]
@@ -521,9 +521,9 @@ class Sed(Segment, list):
             flux = fluxz
 
         sedFluxSlice = flux[totalCut]
-        norm_constant = 1.0/numpy.trapz(abs(sedFluxSlice), sedWavelengthSlice)
-        norm_flux = flux*norm_constant
-        norm_fluxerr = fluxerr*norm_constant if fluxerr is not None else None
+        norm_constant = 1.0/integrate.trapz(abs(sedFluxSlice), sedWavelengthSlice)
+        norm_flux = numpy.array(flux*norm_constant)
+        norm_fluxerr = numpy.array(fluxerr*norm_constant if fluxerr is not None else None)
         norm_segment = Sed(x=spec, y=norm_flux, yerr=norm_fluxerr,
                            xunit=xunit, yunit=yunit, z=self.z)
 
@@ -992,13 +992,9 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
 
     xarr = calc.big_spec(giant_spec, binsize, logbin)
 
-    try:
-        yarr, xarr, yerrarr, counts = calc.binup(giant_flux, giant_spec, xarr,
-                                       statistic, binsize, fill,
-                                       giant_fluxerr, logbin=logbin)
-    except ValueError, e:
-        print e.msg
-        raise
+    yarr, xarr, yerrarr, counts = calc.binup(giant_flux, giant_spec, xarr,
+                                             statistic, binsize, fill,
+                                             giant_fluxerr, logbin=logbin)
 
     # take first entry of xunit, yunit and z from the aggregate SED
     # for the same attributes in the stacked SED
@@ -1057,8 +1053,8 @@ def shift(spec, flux, z, z0):
     if z0 < 0:
         raise InvalidRedshiftError(1)
 
-    spec = numpy.ma.masked_array(spec, numpy.isnan(spec))
-    flux = numpy.ma.masked_array(flux, numpy.isnan(flux))
+    spec = numpy.ma.masked_invalid(spec)
+    flux = numpy.ma.masked_invalid(flux)
 
     spec_z0 = (1 + z0) * spec / (1+z)
     
@@ -1067,7 +1063,7 @@ def shift(spec, flux, z, z0):
     
     flux_z0 = flux*z_total_flux/z0_total_flux
     
-    return spec_z0.filled(numpy.nan), flux_z0.filled(numpy.nan)
+    return numpy.array(spec_z0.filled(numpy.nan)), numpy.array(flux_z0.filled(numpy.nan))
 
 
 def correct_flux_(spec, flux, z, z0):
