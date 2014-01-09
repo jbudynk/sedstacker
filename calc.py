@@ -1,17 +1,7 @@
 import numpy
-import math
 import types
 import warnings
 from sedstacker.exceptions import SegmentError
-
-# to get times:
-# 
-# import time
-#
-# start = time.clock()
-# do_some_stuff()
-# end = time.clock()
-# print ' %.3g s' % (end-start)
 
 
 def binup(y, x, xarr, statistic, binsize, fill, yerr, logbin = False):
@@ -68,12 +58,13 @@ def binup(y, x, xarr, statistic, binsize, fill, yerr, logbin = False):
 
         if count[i] >= 1:
             yarr[i], outerr[i], count[i] = statistic(y_bin, yerr_bin, count[i])
-
         else:
             skipit[i] = 0
 
-    mask = numpy.ma.make_mask(skipit)
+    if logbin:
+        xarr = 10**xarr
 
+    mask = numpy.ma.make_mask(skipit)
     if fill == 'fill':
         out_xarr = xarr
         out_yarr = fill_fill(mask, yarr)
@@ -93,7 +84,7 @@ def wavg_bin(y_bin, yerr_bin, count):
     #if len(yerr_bin) == count:
     weights = 1.0/yerr_bin**2
     yarr = numpy.average(y_bin, weights=weights)
-    outerr = math.sqrt((yerr_bin**2).sum())
+    outerr = numpy.sqrt((yerr_bin**2).sum())
     # outerr[i] = numpy.std(y_bin)) #take either the stddev of y, or sum in quadrature of the errors
     # If any NaN's exist in yerr_bin, then their corresponding fluxes
     # will not be taken into account for the weighted average.
@@ -103,7 +94,7 @@ def wavg_bin(y_bin, yerr_bin, count):
 
     #else:
     #    yarr = numpy.average(y_bin)
-    #    outerr = math.sqrt((yerr_bin**2).sum())
+    #    outerr = numpy.sqrt((yerr_bin**2).sum())
     #    print 'len(yerr) does not match len(y). Computing average instead.'
     
     return yarr, outerr, count
@@ -113,7 +104,7 @@ def avg_bin(y_bin, yerr_bin, count):
 
     yarr = numpy.average(y_bin)
     # outerr[i] = numpy.std(y_bin)
-    outerr = math.sqrt((yerr_bin**2).sum())
+    outerr = numpy.sqrt((yerr_bin**2).sum())
 
     return yarr, outerr, count
 
@@ -122,7 +113,7 @@ def sum_bin(y_bin, yerr_bin, count):
 
     yarr = y_bin.sum()
     # outerr = numpy.std(y_bin)
-    outerr = math.sqrt((yerr_bin**2).sum())
+    outerr = numpy.sqrt((yerr_bin**2).sum())
 
     return yarr, outerr, count
 
@@ -147,27 +138,20 @@ def fill_remove(mask, arr):
     return numpy.array(new_array)
 
 
-def smooth(arr, smooth_binsize):
-    window = numpy.ones(int(smooth_binsize))/float(smooth_binsize)
-    return numpy.convolve(arr, window, 'same')
-
-
-def setup_binup_arrays(y, x, xarr, binsize, yerr, logbin = False):
+def setup_binup_arrays(y, x, xarr, binsize, yerr, logbin=False):
 
     if logbin:
         x = numpy.log10(numpy.array(x))
-        xarr = numpy.log10(numpy.array(xarr))
+        xarr = numpy.log10(xarr)
     else:
         x = numpy.array(x)
-        xarr = numpy.array(xarr)
 
+    xbin = binsize/2.0
+    nx = len(xarr)
     y = numpy.array(y)
     m_yerr = numpy.ma.masked_array(yerr,numpy.isnan(yerr))
 
-    nx = len(xarr)
-    xbin = binsize/2.0
-
-    #returns the binned y-values and y-error values
+    # to be binned y-values and y-error values
     yarr = xarr*0
     outerr = xarr*0
     count = numpy.int_(xarr*0)
@@ -177,12 +161,18 @@ def setup_binup_arrays(y, x, xarr, binsize, yerr, logbin = False):
     return x, xarr, y, m_yerr, nx, xbin, yarr, outerr, count, skipit
 
 
+def smooth(arr, smooth_binsize):
+    window = numpy.ones(int(smooth_binsize))/float(smooth_binsize)
+    return numpy.convolve(arr, window, 'same')
+
+
 def big_spec(arr,binsize,log):
+
     if log:
-        arr_min = math.floor(min(arr))
-        arr_max = math.ceil(max(arr))
-        return numpy.logspace(math.log10(arr_min), math.log10(arr_max), num=(arr_max-arr_min)/binsize)
+        arr_min = numpy.floor(min(numpy.log10(arr)))
+        arr_max = numpy.ceil(max(numpy.log10(arr)))
+        return 10**(numpy.arange(arr_min, arr_max+binsize, binsize))
     else:
-        arr_min = math.floor(min(arr))
-        arr_max = math.ceil(max(arr))
+        arr_min = numpy.floor(min(arr))
+        arr_max = numpy.ceil(max(arr))
         return numpy.arange(arr_min, arr_max+binsize, binsize)
