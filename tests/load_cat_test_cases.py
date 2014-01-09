@@ -136,7 +136,6 @@ class TestLoadCat(unittest.TestCase):
         self.assertEqual(aggsed.z[0], 0.668)
         self.assertEqual(aggsed.z[2], 0.529)
         self.assertEqual(aggsed[0].z, 0.668)
-        self.assert_(numpy.isnan(aggsed[1][5].y))
         self.assertEqual(aggsed[0].id, 2051)
 
 
@@ -146,7 +145,9 @@ class TestLoadCat(unittest.TestCase):
     
     def test_null_values(self):
         aggsed = io.load_cat(self._rootdir+"gs_irs_sep9_small.dat", self._column_map1)
-        self.assert_(numpy.isnan(aggsed.y[0][2]))
+        self.assertEqual(len(aggsed[0]), 2)
+        self.assertEqual(len(aggsed[1]), 3)
+        self.assertEqual(len(aggsed[2]), 3)
         self.assert_(numpy.isnan(aggsed.yerr[1][2]))
         self.assert_(type(aggsed.yerr[2][2]) is numpy.float_)
 
