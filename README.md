@@ -5,6 +5,11 @@ A Python toolkit for statistically combining multiple spectral energy distributi
 
 ** This version is unstable! **
 
+Documentation
+-------------
+
+Please view the Iris user documentation at [cxc.harvard.edu/iris/].
+
 Installation
 ------------
 
