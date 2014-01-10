@@ -170,6 +170,7 @@ class TestSegment(unittest.TestCase):
 
         numpy.testing.assert_array_almost_equal(tmp, spectrum.x)
         numpy.testing.assert_array_almost_equal(control_correct_flux, correct_flux)
+        self.assertNotEqual(spectrum.y[5],correct_flux[5])
 
         
 if __name__ == '__main__':
