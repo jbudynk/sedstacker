@@ -767,7 +767,7 @@ class AggregateSed(list):
 
         Requires that the Seds has at least 4 photometric points'''
 
-        if len([z0]) == 1:
+        if isinstance(z0,(types.FloatType, types.IntType, numpy.float_,numpy.int_,types.NoneType)):
             z0 = [z0]*len(self.segments)
         elif len(z0) != len(self.segments):
             raise ValueError('Length of z0 does not match the length of AggregateSed.')
@@ -809,7 +809,7 @@ class AggregateSed(list):
 
         '''
 
-        if len([z0]) == 1:
+        if isinstance(z0,(types.FloatType, types.IntType, numpy.float_,numpy.int_,types.NoneType)):
             z0 = [z0]*len(self.segments)
         elif len(z0) != len(self.segments):
             raise ValueError('Length of z0 does not match length of AggregateSed.')
@@ -1063,7 +1063,7 @@ def shift(spec, flux, z, z0):
     
     flux_z0 = flux*z_total_flux/z0_total_flux
     
-    return numpy.array(spec_z0.filled(numpy.nan)), numpy.array(flux_z0.filled(numpy.nan))
+    return numpy.array(spec_z0), numpy.array(flux_z0)
 
 
 def correct_flux_(spec, flux, z, z0):
