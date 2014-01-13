@@ -9,10 +9,6 @@ from sedstacker.exceptions import *
 
 class TestAggregateSed(unittest.TestCase):
 
-    segment1 = Sed()
-    segment2 = Spectrum()
-    segment3 = Sed()
-
     def testAggregateSed__init__(self):
 
         segment1 = Sed()
@@ -166,10 +162,15 @@ class TestAggregateSed(unittest.TestCase):
         aggsed[2].z=0.1
         aggsed[3].z=1.0
         rf_aggsed=aggsed.shift(0.0)
-
+        rf_aggsed0=rf_aggsed[0].shift(1.0, correct_flux=False)
+        rf_aggsed1=rf_aggsed[1].shift(0.5, correct_flux=False)
+        rf_aggsed2=rf_aggsed[2].shift(0.1, correct_flux=False)
+        rf_aggsed3=rf_aggsed[3].shift(1.0, correct_flux=False)
+        rf_aggsed=AggregateSed([rf_aggsed0,rf_aggsed1,rf_aggsed2,rf_aggsed3])
         control_norm_aggsed = rf_aggsed.normalize_by_int()
 
         self.assertAlmostEqual(norm_aggsed.segments[0].norm_constant, control_norm_aggsed[0].norm_constant)
+        self.assertAlmostEqual(norm_aggsed[1].norm_constant,1.4939309057e-08)
         numpy.testing.assert_array_almost_equal(control_norm_aggsed[0].y,norm_aggsed[0].y)
         sed=norm_aggsed[1].toarray()
         control_sed=control_norm_aggsed[1].toarray()
@@ -231,20 +232,9 @@ class TestAggregateSed(unittest.TestCase):
                                                 correct_flux=True,
                                                 z0=[1.0,0.5,0.35,1.0])
 
-        aggsed[0].z=1.0
-        aggsed[1].z=0.5
-        aggsed[2].z=0.35
-        aggsed[3].z=1.0
-        rf_aggsed=aggsed.shift(0.0)
 
-        control_norm_aggsed = rf_aggsed.normalize_at_point(5000,1000)
-        control_sed=control_norm_aggsed[1].toarray()
-
-        self.assertAlmostEqual(norm_aggsed.segments[2].norm_constant, control_norm_aggsed[2].norm_constant)
-        numpy.testing.assert_array_almost_equal(control_norm_aggsed[0].y,norm_aggsed[0].y)
-        sed=norm_aggsed[1].toarray()
-        control_sed=control_norm_aggsed[1].toarray()
-        numpy.testing.assert_array_almost_equal(control_sed[0],sed[0])
+        self.assertAlmostEqual(norm_aggsed[2].norm_constant, 0.148148148)
+        self.assertAlmostEqual(norm_aggsed[3].norm_constant, 0.1)
 
 
     def test_remove_segment(self):
