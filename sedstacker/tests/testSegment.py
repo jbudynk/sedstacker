@@ -65,16 +65,6 @@ class TestSegment(unittest.TestCase):
         self.assertEqual(norm_sed.norm_constant, norm_const)
         self.assertEqual(norm_sed[2].y, flux[2])
 
-#        astlib_sed = astsed.SED(wavelength = self._x, flux = self._y)
-#        astlib_sed.normalise()
-
-#        norm_sed_cfTrue = sed.normalize_by_int(correct_flux=True, z0 = 0.5)
-#        self.assertNotEqual(norm_sed_cfTrue.norm_constant, norm_sed.norm_constant)
-
-
-#        self.assertEqual(norm_sed[2].y, astlib_sed.flux[2])
-#        self.assertAlmostEqual(norm_sed[1].y / norm_sed.norm_constant,  sed[1].y)
-
 
     def test_norm_at_point_spectrum1(self):
         
@@ -119,10 +109,25 @@ class TestSegment(unittest.TestCase):
                    z = self._z)
 
         shifted_sed_cfeqTrue = sed.shift(0.1)
-        #shifted_sed_cfeqFalse = sed.shift(0.1, correct_flux = False)
+        shifted_sed_cfeqTrue_arr = shifted_sed_cfeqTrue.toarray()
+
+        # what sed.shift() should do
+        spec_z0 = self._x*(1+0.1)/(1+sed.z)
+        zflux = numpy.trapz(self._y, self._x)
+        z0flux = numpy.trapz(self._y, spec_z0)
+        const = zflux/z0flux
 
         self.assertEqual(shifted_sed_cfeqTrue.z, 0.1)
         self.assertEqual(isinstance(shifted_sed_cfeqTrue, Sed), True)
+        numpy.testing.assert_array_almost_equal(shifted_sed_cfeqTrue_arr[1], self._y*const)
+
+        # not correcting for dimming: correct_flux = False
+        shifted_sed_cfeqFalse = sed.shift(0.1, correct_flux = False)
+        shifted_sed_cfeqFalse_arr = shifted_sed_cfeqFalse.toarray()
+
+        numpy.testing.assert_array_equal(shifted_sed_cfeqFalse_arr[1], self._y)
+        numpy.testing.assert_array_equal(shifted_sed_cfeqFalse_arr[0],shifted_sed_cfeqTrue_arr[0])
+        numpy.testing.assert_array_equal(shifted_sed_cfeqFalse_arr[0],spec_z0)
 
 
     def test_shift_spectrum(self):
@@ -132,9 +137,19 @@ class TestSegment(unittest.TestCase):
                             z = 1.65)
 
         shifted_spectrum_cfeqTrue = spectrum.shift(0.1)
-        #shifted_spectrum_cfeqFalse = sed.shift(0.1, correct_flux = False)
+        shifted_spectrum_cfeqFalse = spectrum.shift(0.1, correct_flux = False)
+
+        # spec_z0 = spectrum.x*(1+0.1)/(spectrum.z)
+        # zflux = numpy.trapz(spectrum.y, spectrum.x)
+        # z0flux = numpy.trapz(spectrum.y, spec_z0)
+        # const = zflux/z0flux
+        const = 1.4673584905660368e-08/3.5350000000000254e-08
 
         self.assertEqual(shifted_spectrum_cfeqTrue.z, 0.1)
+        self.assertAlmostEqual(shifted_spectrum_cfeqTrue.x[9], 1247.8983747, delta=1e-6)
+        numpy.testing.assert_array_almost_equal(shifted_spectrum_cfeqTrue.y, spectrum.y*const)
+        numpy.testing.assert_array_equal(shifted_spectrum_cfeqFalse.x, shifted_spectrum_cfeqTrue.x)
+        numpy.testing.assert_array_equal(shifted_spectrum_cfeqFalse.y, spectrum.y)
 
 
     def test_shift_spectrum_raise_InvalidRedshift(self):
