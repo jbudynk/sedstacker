@@ -22,22 +22,6 @@ class TestSed(unittest.TestCase):
                   xunit = ['Angstrom'],
                   yunit = ['erg/s/cm**2/Angstrom'],
                   z = 1.65)
-        
-
-#        sed = Sed()
-#        sed.x = numpy.array([3823.0, 44770.9, 5657.1])
-#        sed.y = numpy.array([1.3e-11, 2.56e-11, 7.89e-11])
-#        sed.yerr = numpy.array([1.0e-13, 1.0e-13, 1.0e-13])
-#        sed.xunit = numpy.array(['Angstrom','Angstrom','Angstrom'])
-#        sed.yunit = numpy.array(['erg/s/cm**2/Angstrom',
-#                                 'erg/s/cm**2/Angstrom',
-#                                 'erg/s/cm**2/Angstrom'])
-#        sed.z = 1.65
-
-#        self.assertAlmostEqual(sed.x[0], 3823.0)
-#        self.assert_(sed.xunit[0] == 'Angstrom')
-#        self.failUnlessEqual(len(sed.y), 3)
-#        self.assertEqual(len(sed.__dict__), 6)
 
         self.assertAlmostEqual(sed[0].x, 3823.0)
         self.assert_(sed[1].xunit == 'Angstrom')
@@ -131,14 +115,9 @@ class TestSed(unittest.TestCase):
                   z = self._z)
         
         shifted_sed_cfTrue = sed.shift(0.1)
-        #shifted_sed_cfeqFalse = sed.shift(0.1, correct_flux = False)
         
         self.assertEqual(shifted_sed_cfTrue.z, 0.1)
         self.assertAlmostEqual('%.2f' % shifted_sed_cfTrue[1].x, repr(1858.75))
-
-#        plt.loglog(sedarray_shift[0], sedarray_shift[1], '-',
-#                 sedarray[0], sedarray[1], '-')
-#        plt.show()
 
 
     def test_normalize_by_int(self):
