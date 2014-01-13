@@ -1,5 +1,5 @@
-#
 import numpy
+import sedstacker
 from sedstacker.sed import Sed, Spectrum, AggregateSed, create_from_points, PhotometricPoint
 from sedstacker.exceptions import PreExistingFileError
 import unittest
@@ -7,6 +7,7 @@ import os.path
 import os
 import astropy.io.ascii
 
+test_directory = os.path.dirname(sedstacker.__file__)+"/tests/resources/write/"
 
 class TestWriteSed(unittest.TestCase):
 
@@ -14,25 +15,23 @@ class TestWriteSed(unittest.TestCase):
     y = numpy.linspace(1000,10000,num=100)*1e-10
     yerr = y*0.01
 
-    rootdir = '/data/vao/staff/jbudynk/python_project/sedstacker/tests/test_data/write/'
-
     def setUp(self):
-        filename = self.rootdir+'test_PrexistingFile.txt'
+        filename = test_directory+'test_PrexistingFile.txt'
         f = open(filename, 'w')
         f.write('oh hey there')
         f.close()
 
 
     def tearDown(self):
-        os.system('cp '+self.rootdir+'*.* '+self.rootdir+'copy/')
-        os.system('rm -f '+self.rootdir+'*.*')
+        os.system('cp '+test_directory+'*.* '+test_directory+'copy/')
+        os.system('rm -f '+test_directory+'*.*')
 
 
     def test_sed_write_file_exists(self):
 
         sed = Sed(x=self.x,y=self.y,yerr=self.yerr)
 
-        filename = self.rootdir+'sed_file_exists.dat'
+        filename = test_directory+'sed_file_exists.dat'
         sed.write(filename)
         self.assertEqual(os.path.exists(filename), True)
 
@@ -41,7 +40,7 @@ class TestWriteSed(unittest.TestCase):
 
         sed = Sed(x=self.x,y=self.y,yerr=self.yerr)
         sed.counts = numpy.ones(numpy.array(sed.toarray()[0]).size, dtype=numpy.int_)
-        filename = self.rootdir+'sed_counts.dat'
+        filename = test_directory+'sed_counts.dat'
         sed.write(filename)
         self.assertEqual(os.path.exists(filename), True)
         data = astropy.io.ascii.read(filename)
@@ -50,7 +49,7 @@ class TestWriteSed(unittest.TestCase):
 
     def test_spectrum_write_file_exists(self):
         spectrum = Spectrum(x=self.x, y=self.y, yerr=self.yerr)
-        filename = self.rootdir+'spectrum_file_exists.dat'
+        filename = test_directory+'spectrum_file_exists.dat'
         spectrum.write(filename)
         self.assertEqual(os.path.exists(filename), True)
 
@@ -60,7 +59,7 @@ class TestWriteSed(unittest.TestCase):
         spectrum = Spectrum(x=self.x, y=self.y, yerr=self.yerr)
 
         aggsed = AggregateSed([sed, spectrum])
-        filename = self.rootdir+'aggsed_file_exists.dat'
+        filename = test_directory+'aggsed_file_exists.dat'
         aggsed.write(filename)
         self.assertEqual(os.path.exists(filename), True)
 
@@ -72,7 +71,7 @@ class TestWriteSed(unittest.TestCase):
 
         aggsed = AggregateSed([sed, spectrum])
 
-        filename = self.rootdir+'aggsed_counts1.dat'
+        filename = test_directory+'aggsed_counts1.dat'
         aggsed.write(filename)
         self.assert_(os.path.exists(filename))
         data = astropy.io.ascii.read(filename)
@@ -85,7 +84,7 @@ class TestWriteSed(unittest.TestCase):
 
         aggsed = AggregateSed([sed, spectrum])
 
-        filename = self.rootdir+'aggsed_counts2.dat'
+        filename = test_directory+'aggsed_counts2.dat'
         aggsed.write(filename)
         data = astropy.io.ascii.read(filename)
         self.assertEqual(data.colnames, ['x','y','y_err'])
@@ -96,7 +95,7 @@ class TestWriteSed(unittest.TestCase):
         spectrum = Spectrum(x=self.x, y=self.y, yerr=self.yerr)
         aggsed = AggregateSed([sed, spectrum])
         
-        filename = self.rootdir+'test_PrexistingFile.txt'
+        filename = test_directory+'test_PrexistingFile.txt'
         self.assertRaises(PreExistingFileError, aggsed.write, filename)
 
 

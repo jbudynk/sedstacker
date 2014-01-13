@@ -4,6 +4,8 @@ import os
 import os.path
 from sedstacker import io
 
+test_directory = os.path.dirname(sedstacker.__file__)+"/tests/resources/test_load_sed/"
+
 class TestSedFileInput(unittest.TestCase):
     '''
     Test the SED File reader functions, load_sed, check_fmt, and _read_ascii.
@@ -36,12 +38,12 @@ class TestSedFileInput(unittest.TestCase):
 
     def testThreeColsWithNames(self):
 
-        spectrum = io.load_sed(self.rootdir+'case1.dat', sed_type='spectrum')
+        spectrum = io.load_sed(test_directory+'case1.dat', sed_type='spectrum')
 
         self.assertEqual(spectrum.x[0], 814.020019531)
         self.assertEqual(spectrum.y[3], -1.21521716301e-14)
 
-        sed = io.load_sed(self.rootdir+'case1.dat', sed_type='sed')
+        sed = io.load_sed(test_directory+'case1.dat', sed_type='sed')
 
         self.assertEqual(sed[0].x, 814.020019531)
         self.assertEqual(sed[3].y, -1.21521716301e-14)
@@ -49,7 +51,7 @@ class TestSedFileInput(unittest.TestCase):
     
     def testThreeColsWithoutNames(self):
         
-        spectrum = io.load_sed(self.rootdir+'case2_3columnsNoNames.dat', sed_type='spectrum')
+        spectrum = io.load_sed(test_directory+'case2_3columnsNoNames.dat', sed_type='spectrum')
         pass
 
 

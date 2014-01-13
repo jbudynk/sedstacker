@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 logging.basicConfig(level=logging.INFO)
 
 rootdir = os.path.dirname(sedstacker.__file__)
-filename = rootdir+"/tests/test_data/phot-cat-mags.ascii"
+filename = rootdir+"/tests/phot-cat-mags.ascii"
 
 column_map = {"ucfht":(3823.0,"AA","mag","errU"),
               "Bsub":(4459.7,"AA","mag","errB"),
