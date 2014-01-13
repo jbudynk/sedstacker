@@ -85,49 +85,48 @@ A *photometry catalog* is a file with whitespace-separated columns, each with th
 
 ### Common use cases
 
-1. The user has a photometry catalog file of SEDs which she wants to
+The user has a photometry catalog file of SEDs which she wants to
 categorize by redshift before stacking.
 
-   >>> from sedstacker.io import load_cat
-   >>> from sedstacker.sed import AggregateSed, stack
-   >>>
-   >>> # create the mapping from column fluxes to spectral
-   >>> # coordinates, spectral and flux units, and flux-error values
-   >>> column_map={column_map = {"ucfht":(3823.0,"AA","mag","errU"),
-                  "Bsub":(4459.7,"AA","mag","errB"),
-              	  "Vsub":(5483.8,"AA","mag","errV"),
-              	  "gsub":(4779.6,"AA","mag","errg"),
-              	  "rsub":(6295.1,"AA","mag","errR"),
-              	  "isub":(7640.8,"AA","mag","errI"),
-              	  "zsub":(9036.9,"AA","mag","errz"),
-              	  "j":(12491.0,"AA","mag","errJ"),
-              	  "Ks":(21590.4,"AA","mag","errK"),
-              	  "irac3.6":(36000.0,"AA","mag","err3.6"),
-              	  "irac4.5":(45000.0,"AA","mag","err4.5"),
-              	  "irac5.8":(58000.0,"AA","mag","err5.8"),
-              	  "irac8.0":(80000.0,"AA","mag","err8.0"),
-              	  "mips24.0":(240000.0,"AA","mag","err24")
-              	  }
-   >>> seds = load_cat('mycatalog.cat', column_map=column_map)
-   >>>
-   >>> # categorize seds by their redshifts: sources with z < 0.5,
-   >>> # sources with z > 0.5
-   >>> lowz = AggregateSed([sed for sed in seds if sed.z < 0.5])
-   >>> highz = AggregateSed([sed for sed in seds if sed.z >= 0.5])
-   >>>
-   >>> # shift the SEDs to restframe
-   >>> lowz.shift(0.0)
-   >>> highz.shift(0.0)
-   >>>
-   >>> # normalize the SEDs so that the integrated flux of each SED is
-   >>> # 1
-   >>> lowz.normalize_by_int()
-   >>> highz.normalize_by_int()
-   >>>
-   >>> # stack the lowz SEDs using weighted average and logarithmic
-   >>> # binning
-   >>> lowz_stack = stack(lowz, 100.0, 'wavg', logbin=True)
-
+    >>> from sedstacker.io import load_cat
+    >>> from sedstacker.sed import AggregateSed, stack
+    >>>
+    >>> # create the mapping from column fluxes to spectral
+    >>> # coordinates, spectral and flux units, and flux-error values
+    >>> column_map={"ucfht":(3823.0,"AA","mag","errU"),
+                    "Bsub":(4459.7,"AA","mag","errB"),
+              	    "Vsub":(5483.8,"AA","mag","errV"),
+              	    "gsub":(4779.6,"AA","mag","errg"),
+              	    "rsub":(6295.1,"AA","mag","errR"),
+              	    "isub":(7640.8,"AA","mag","errI"),
+              	    "zsub":(9036.9,"AA","mag","errz"),
+              	    "j":(12491.0,"AA","mag","errJ"),
+              	    "Ks":(21590.4,"AA","mag","errK"),
+              	    "irac3.6":(36000.0,"AA","mag","err3.6"),
+              	    "irac4.5":(45000.0,"AA","mag","err4.5"),
+              	    "irac5.8":(58000.0,"AA","mag","err5.8"),
+              	    "irac8.0":(80000.0,"AA","mag","err8.0"),
+              	    "mips24.0":(240000.0,"AA","mag","err24")
+              	   }
+    >>> seds = load_cat('mycatalog.cat', column_map=column_map)
+    >>>
+    >>> # categorize seds by their redshifts: sources with z < 0.5,
+    >>> # sources with z > 0.5
+    >>> lowz = AggregateSed([sed for sed in seds if sed.z < 0.5])
+    >>> highz = AggregateSed([sed for sed in seds if sed.z >= 0.5])
+    >>>
+    >>> # shift the SEDs to restframe
+    >>> lowz.shift(0.0)
+    >>> highz.shift(0.0)
+    >>>
+    >>> # normalize the SEDs so that the integrated flux of each SED is
+    >>> # 1
+    >>> lowz.normalize_by_int()
+    >>> highz.normalize_by_int()
+    >>>
+    >>> # stack the lowz SEDs using weighted average and logarithmic
+    >>> # binning
+    >>> lowz_stack = stack(lowz, 0.2, 'wavg', logbin=True)
 
 Users can load data from file using the *io* module:
 
