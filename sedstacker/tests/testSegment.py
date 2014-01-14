@@ -1,7 +1,6 @@
-#
 import unittest
 import numpy
-from sedstacker.sed import Segment, Sed, Spectrum, correct_flux_, shift
+from sedstacker.sed import Segment, Sed, Spectrum, correct_flux_, shift, _get_setattr
 from astLib import astSED as astsed
 from sedstacker.exceptions import NoRedshiftError, InvalidRedshiftError
 
@@ -186,6 +185,20 @@ class TestSegment(unittest.TestCase):
         numpy.testing.assert_array_almost_equal(tmp, spectrum.x)
         numpy.testing.assert_array_almost_equal(control_correct_flux, correct_flux)
         self.assertNotEqual(spectrum.y[5],correct_flux[5])
+
+
+    def test_get_setattr(self):
+
+        sed = Sed(x=[1,2,3],y=[1,2,3,])
+        sed.id = 2051
+        sed.stuff = 'check me out'
+
+        sed2 = Sed(x=[4,5,6],y=[4,5,6])
+        _get_setattr(sed2,sed)
+
+        self.assertEqual(sed2.id, sed.id)
+        self.assertNotEqual(sed2[0].x,sed[0].x)
+        self.assertEqual(sed.stuff, sed2.stuff)
 
         
 if __name__ == '__main__':

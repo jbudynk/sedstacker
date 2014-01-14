@@ -88,6 +88,7 @@ def load_sed(filename, xunit='AA', yunit='erg/s/cm**2/AA', sed_type='spectrum', 
 	
 
 def load_cat(filename, column_map, fmt='ascii', **kwargs):
+
     '''Reads a photometry catalog and returns a Sed object (if file contains just one SED) or an AggregateSed object (if the file contains multiple SEDs).
 
     Args:
@@ -98,7 +99,10 @@ def load_cat(filename, column_map, fmt='ascii', **kwargs):
         ..code:: column_map = {'sdss_g':(4770., 'AA', 'mag', None), 'mips24':(24., 'micron', 'uJy','mips24err')} 
     Kwargs:
         fmt (str): The file format of the input file. The default file format is 'ascii'. For release 1.0, only ASCII files will be supported, so this must remain unchanged.
-        '''
+
+    If a column of redshift values exists in the photometry catalog, label the column as 'z' for load_cat() to read the redshift information in correctly.
+    '''
+
     # **kwargs: keyword arguments accepted by astopy.io.ascii.read() may be used to further specify the information you wish to load.
 
     if not check_file_format(fmt):
@@ -120,7 +124,6 @@ def load_cat(filename, column_map, fmt='ascii', **kwargs):
             raise NonStandardColumnNamesError
         else:
             raise
-        
 
     column_names = catalog.colnames
 
@@ -158,7 +161,7 @@ def load_cat(filename, column_map, fmt='ascii', **kwargs):
                 else:
                     yerr_name.append(column_map.get(name)[3])
                     yerr.append(catalog[yerr_name[len(yerr_name)-1]].data[row])
-
+            
             setattr(sed, name.lower(), catalog[name].data[row])
 
         for i in range(len(x)):
