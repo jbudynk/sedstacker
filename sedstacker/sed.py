@@ -18,8 +18,6 @@ from sedstacker.exceptions import NoRedshiftError, InvalidRedshiftError, Segment
 # 1. shifting SEDs - right now, only works for x in wavelength units.
 #                    need to implement for other units, like freq and
 #                    energy
-#
-# 2. need to test correct_flux algorithm
 
 
 logging.basicConfig(format='%(levelname)s:%(message)s')
