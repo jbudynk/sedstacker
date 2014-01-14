@@ -11,6 +11,7 @@ from astropy.table import Table
 from scipy import interpolate, integrate
 
 from sedstacker import calc
+from sedstacker.config import NUMERIC_TYPES
 from sedstacker.exceptions import NoRedshiftError, InvalidRedshiftError, SegmentError, OutsideRangeError, NotASegmentError, PreExistingFileError
 
 # UNRESOLVED ISSUES
@@ -95,8 +96,6 @@ class Spectrum(Segment):
             yunit (str): The flux coordinates. Default value is 'erg/s/cm**2/AA'.
             z (float): The redshift of the Sed. Default value is None.'''
 
-        yerrtypes = (types.FloatType, numpy.float_, types.IntType, numpy.int_)
-
         if len(x) != len(y):
             raise SegmentError('x and y must be of the same length.')
 
@@ -105,7 +104,7 @@ class Spectrum(Segment):
 
         if yerr is None:
             self.yerr = numpy.array([numpy.nan]*len(y))
-        elif type(yerr) in yerrtypes:
+        elif type(yerr) in NUMERIC_TYPES:
             self.yerr = numpy.array([float(yerr)]*len(y))
         elif len(yerr) == len(y):
             self.yerr = numpy.array(yerr)
@@ -119,12 +118,17 @@ class Spectrum(Segment):
         # Say someone adds a redshift after creating the Spectrum object. How can I check that the attribute value they enter is non-negative and of numeric type?
         if isinstance(z, types.NoneType):
             self.z = z
-        elif type(z) not in (types.FloatType, types.IntType, numpy.float_, numpy.int_):
+        elif type(z) not in NUMERIC_TYPES:
             raise InvalidRedshiftError(0)
         elif z < 0:
             raise InvalidRedshiftError(1)
         else:
             self.z = z
+
+
+    def __str__(self):
+        data = Table([self.x, self.y, self.yerr], names=('x','y','yerr'), meta={'z':self.z})
+        return data.__str__()
 
 
     def shift(self, z0, correct_flux=True):
@@ -344,16 +348,7 @@ class Sed(Segment, list):
 
 '''
 
-
-#        self._cache = []
-        if isinstance(z, types.NoneType):
-            self.z = z
-        elif type(z) not in (types.FloatType, types.IntType, numpy.float_, numpy.int_):
-            raise InvalidRedshiftError(0)
-        elif z < 0:
-            raise InvalidRedshiftError(1)
-        else:
-            self.z = z
+        self._z = z
         
         if len(x) != len(y):
             raise SegmentError('x and y must be of the same length.')
@@ -366,12 +361,16 @@ class Sed(Segment, list):
             elif len(yerr) != len(x):
                 raise SegmentError('x and yerr must be of the same length.')
 
-        if len(xunit) == 1:
+        if isinstance(xunit,types.NoneType):
+            xunit = [xunit]*len(x)
+        elif len(xunit) == 1:
             xunit = xunit*len(x)
         elif len(xunit) != len(x):
             raise SegmentError('xunit must have the same length as x.')
 
-        if len(yunit) == 1:
+        if isinstance(yunit,types.NoneType):
+            yunit = [yunit]*len(y)
+        elif len(yunit) == 1:
             yunit = yunit*len(y)
         elif len(yunit) != len(y):
             raise SegmentError('yunit must have the same length as y.')
@@ -381,9 +380,85 @@ class Sed(Segment, list):
             self.append(point)
 
 
+    @property
+    def x(self):
+        return self.toarray()[0]
+    @x.setter
+    def x(self, val):
+        pass
+    @x.deleter
+    def x(self):
+        raise AttributeError('Cannot delete attribute \'x\'.')
+    
+    @property
+    def y(self):
+        return self.toarray()[1]
+    @y.setter
+    def y(self, val):
+        pass
+    @y.deleter
+    def y(self):
+        raise AttributeError('Cannot delete attribute \'y\'.')
+
+    @property
+    def yerr(self):
+        return self.toarray()[2]
+    @yerr.setter
+    def yerr(self, val):
+        pass
+    @yerr.deleter
+    def yerr(self):
+        logging.info('Setting \'yerr\' to None.')
+        self._yerr=None
+
+    @property
+    def xunit(self):
+        return self.toarray()[3]
+    @xunit.setter
+    def xunit(self, val):
+        pass
+    @xunit.deleter
+    def xunit(self):
+        logging.info('Setting \'xunit\' to None.')
+        self._xunit=None
+
+    @property
+    def yunit(self):
+        return self.toarray()[4]
+    @yunit.setter
+    def yunit(self, val):
+    """Sets all y-unit values to val"""
+        pass
+    @yunit.deleter
+    def yunit(self):
+        self._yunit=None
+
+    @property
+    def z(self):
+        return self._z
+    @z.setter
+    def z(self, val):
+        if isinstance(val, types.NoneType):
+            self._z = val
+        elif type(val) not in NUMERIC_TYPES:
+            raise InvalidRedshiftError(0)
+        elif val < 0:
+            raise InvalidRedshiftError(1)
+        else:
+            self._z = numpy.float_(val)
+    @z.deleter
+    def z(self):
+        logging.info('Setting \'z\' to None.')
+        self._z = None
+
 #    def set_cache(self):        
 #        self._cache = numpy.array(x, y, yerr, xunit, yunit)
 #    def update_cache(self):
+
+
+    def __str__(self):
+        data = Table([self.x, self.y, self.yerr, self.xunit, self.yunit], names=('x','y','yerr','xunit','yunit'), meta={'z':self.z})
+        return data.__str__()
 
 
     def shift(self, z0, correct_flux = True):
@@ -961,7 +1036,7 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
     '''
 
 
-    if type(binsize) not in (types.FloatType, types.IntType, numpy.float_, numpy.int_):
+    if type(binsize) not in NUMERIC_TYPES:
         raise ValueError('binsize[0] must be of numeric type int or float.')
 
     if type(smooth) not in (types.BooleanType, numpy.bool_):
@@ -1044,9 +1119,9 @@ def shift(spec, flux, z, z0):
 
     if z is None:
         raise NoRedshiftError
-    if type(z0) not in (types.FloatType, numpy.float_, types.IntType, numpy.int_):
+    if type(z0) not in NUMERIC_TYPES:
         raise InvalidRedshiftError(0)
-    if type(z) not in (types.FloatType, numpy.float_, types.IntType, numpy.int_):
+    if type(z) not in NUMERIC_TYPES:
         raise InvalidRedshiftError(0)
     if z0 < 0:
         raise InvalidRedshiftError(1)
