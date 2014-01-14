@@ -153,8 +153,12 @@ class Spectrum(Segment):
             spec_z0 = (1 + z0) * spec / (1+self.z)
             flux_z0 = flux
 
-        return Spectrum(x=spec_z0, y=flux_z0, yerr=self.yerr,
+        spec = Spectrum(x=spec_z0, y=flux_z0, yerr=self.yerr,
                         xunit=self.xunit, yunit=self.yunit, z=z0)
+        # keep attributes of old sed
+        _get_setattr(spec,self)
+
+        return spec
 
 
     def normalize_at_point(self, x0, y0, dx=50, norm_operator=0, correct_flux=False, z0=None):
@@ -241,6 +245,9 @@ class Spectrum(Segment):
 
         setattr(norm_spectrum, 'norm_constant', norm_constant)
 
+        # keep attributes of old sed
+        _get_setattr(norm_spectrum,self)
+
         return norm_spectrum
 
 
@@ -287,6 +294,9 @@ class Spectrum(Segment):
                                 xunit=self.xunit, yunit=self.yunit, z=self.z)
 
         setattr(norm_segment, 'norm_constant', norm_constant)
+
+        # keep attributes of old sed
+        _get_setattr(norm_segment,self)
 
         return norm_segment
 
@@ -415,8 +425,13 @@ class Sed(Segment, list):
         else:
             spec_z0 = (1 + z0) * spec / (1+self.z)
             flux_z0 = flux
-        return Sed(x=spec_z0, y=flux_z0, yerr=fluxerr,
+        sed = Sed(x=spec_z0, y=flux_z0, yerr=fluxerr,
                    xunit=xunit, yunit=yunit, z=z0)
+
+        # keep attributes of old sed
+        _get_setattr(sed,self)
+
+        return sed
 
 
     def normalize_at_point(self, x0, y0, norm_operator=0, correct_flux=False, z0=None):
@@ -475,6 +490,9 @@ class Sed(Segment, list):
         norm_sed = Sed(x=spec, y=norm_flux, yerr=norm_fluxerr, xunit=xunit, yunit=yunit, z=self.z)
         setattr(norm_sed, 'norm_constant', norm_constant)
 
+        # keep attributes of old sed
+        _get_setattr(norm_sed,self)
+
         return norm_sed
     
 
@@ -526,7 +544,9 @@ class Sed(Segment, list):
                            xunit=xunit, yunit=yunit, z=self.z)
 
         setattr(norm_segment, 'norm_constant', norm_constant)
-        
+        # keep attributes of old sed
+        _get_setattr(norm_segment,self)
+
         return norm_segment
 
 
@@ -1083,3 +1103,9 @@ def find_range(array, a, b):
         return (-1, -1)
     else:
         return [start-1, end]
+
+
+def _get_setattr(new_object, old_object):
+    for key in old_object.__dict__:
+        if key not in new_object.__dict__:
+            setattr(new_object, key, old_object.__dict__[key])
