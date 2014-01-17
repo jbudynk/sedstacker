@@ -20,7 +20,11 @@ from sedstacker.exceptions import NoRedshiftError, InvalidRedshiftError, Segment
 #                    energy
 
 
-logging.basicConfig(format='%(levelname)s:%(message)s')
+logger=logging.getLogger(__name__)
+formatter=logging.Formatter('%(levelname)s:%(message)s')
+hndlr=logging.StreamHandler()
+hndlr.setFormatter(formatter)
+logger.addHandler(hndlr)
 
 
 class PhotometricPoint(object):
@@ -218,7 +222,7 @@ class Spectrum(Segment):
         if (x0-dx < min(self.x)) or (x0+dx > max(self.x)):
             high_lim = min((x0+dx, max(self.x)))
             low_lim = max((x0+dx, min(self.x)))
-            logging.warning(' Spectrum does not cover full range used for determining normalization constant. Spectral range used: [{low}:{high}]'.format(low=repr(low_lim), high=repr(high_lim)))
+            logger.warning(' Spectrum does not cover full range used for determining normalization constant. Spectral range used: [{low}:{high}]'.format(low=repr(low_lim), high=repr(high_lim)))
 
         if correct_flux:
             fluxz = correct_flux_(self.x, flux, self.z, z0)
@@ -748,11 +752,11 @@ class AggregateSed(list):
                 shifted_seg = segment.shift(z0, correct_flux = correct_flux)
                 shifted_segments.append(shifted_seg)
             except NoRedshiftError:
-                logging.warning(' Excluding AggregateSed[%d] from the shifted AggregateSed.' % self.index(segment))
+                logger.warning(' Excluding AggregateSed[%d] from the shifted AggregateSed.' % self.index(segment))
                 pass
 
             except InvalidRedshiftError:
-                logging.warning(' Excluding AggregateSed[%d] from the shifted AggregateSed.' % self.index(segment))
+                logger.warning(' Excluding AggregateSed[%d] from the shifted AggregateSed.' % self.index(segment))
                 pass
 
         return AggregateSed(shifted_segments)
@@ -800,10 +804,10 @@ class AggregateSed(list):
                                                       z0=z0[i])
                 norm_segments.append(norm_seg)
             except OutsideRangeError:
-                logging.warning(' Excluding AgggregateSed[%d] from the normalized AggregateSed.' % self.index(segment))
+                logger.warning(' Excluding AgggregateSed[%d] from the normalized AggregateSed.' % self.index(segment))
                 pass
             except SegmentError, e:
-                logging.warning(' Excluding AggregateSed[%d] from the normalized AggregateSed' % self.index(segment))
+                logger.warning(' Excluding AggregateSed[%d] from the normalized AggregateSed' % self.index(segment))
                 pass
 
         return AggregateSed(norm_segments)
@@ -841,7 +845,7 @@ class AggregateSed(list):
                                                     correct_flux=correct_flux,
                                                     z0 = z0[i])
             except SegmentError:
-                logging.warning(' Excluding AggregateSed[%d] from the normalized AggregateSed' % self.index(segment))
+                logger.warning(' Excluding AggregateSed[%d] from the normalized AggregateSed' % self.index(segment))
                 pass
 
             norm_segments.append(norm_seg)
