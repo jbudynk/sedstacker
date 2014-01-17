@@ -8,13 +8,15 @@ import logging
 import os
 
 start = time.clock()
+logger_io=logging.getLogger('sedstacker.io')
+logger_io.setLevel(logging.ERROR)
+logger_sed=logging.getLogger('sedstacker.sed')
+logger_sed.setLevel(logging.ERROR)
 
 test_directory = os.path.dirname(sedstacker.__file__)+"/tests/resources/spectra/"
-directory = open(test_directory+'list.txt','r')
-files = [line.strip() for line in directory]
-directory.close()
 
 os.system('rm '+test_directory+'stacked_spectra_maskcc10.dat')
+files = os.listdir(test_directory)
 
 specs = []
 counter = 0
@@ -31,7 +33,7 @@ aggsed = AggregateSed(specs)
 
 norm_aggsed = aggsed.normalize_at_point(3500.0, 1.0)
 
-stack_spectra = stack(norm_aggsed, 1.0, 'avg', fill='fill')
+stack_spectra = stack(norm_aggsed, 10.0, 'avg', fill='fill')
 stack_ = stack_spectra.toarray()
 
 stack_spectra.write(test_directory+'stacked_spectra_maskcc10.dat')
