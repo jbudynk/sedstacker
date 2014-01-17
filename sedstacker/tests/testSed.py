@@ -150,5 +150,33 @@ class TestSed(unittest.TestCase):
         self.assertEqual(sedarray[1][0], self._y[0])
 
 
+    def test_xyyerr_properties(self):
+        
+        sed = Sed(x = self._x, y = self._y, yerr = self._yerr,
+                  xunit = self._xunit, yunit = self._yunit,
+                  z = self._z)
+
+        numpy.testing.assert_array_equal(sed.x, self._x)
+        numpy.testing.assert_array_equal(sed.y, self._y)
+        numpy.testing.assert_array_equal(sed.yerr, self._yerr)
+
+        sed.remove_point(0)
+        
+        numpy.testing.assert_array_equal(sed.x, self._x[1:])
+        numpy.testing.assert_array_equal(sed.y, self._y[1:])
+        numpy.testing.assert_array_equal(sed.yerr, self._yerr[1:])
+
+        p=PhotometricPoint(240000.,4.5e-9)
+        sed.add_point(p)
+
+        numpy.testing.assert_array_equal(sed.x, numpy.array([4477.9, 5657.1, 6370.0, 240000.]))
+
+        sed.yerr = 1e-10
+        numpy.testing.assert_array_equal(sed.yerr, numpy.array([1e-10]*len(sed)))
+        with self.assertRaises(AssertionError):
+            sed.yerr = [1e-13]
+        
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -11,6 +11,7 @@ from astropy.table import Table
 from scipy import interpolate, integrate
 
 from sedstacker import calc
+from sedstacker.config import NUMERIC_TYPES
 from sedstacker.exceptions import NoRedshiftError, InvalidRedshiftError, SegmentError, OutsideRangeError, NotASegmentError, PreExistingFileError
 
 # UNRESOLVED ISSUES
@@ -99,8 +100,6 @@ class Spectrum(Segment):
             yunit (str): The flux coordinates. Default value is 'erg/s/cm**2/AA'.
             z (float): The redshift of the Sed. Default value is None.'''
 
-        yerrtypes = (types.FloatType, numpy.float_, types.IntType, numpy.int_)
-
         if len(x) != len(y):
             raise SegmentError('x and y must be of the same length.')
 
@@ -109,7 +108,7 @@ class Spectrum(Segment):
 
         if yerr is None:
             self.yerr = numpy.array([numpy.nan]*len(y))
-        elif type(yerr) in yerrtypes:
+        elif type(yerr) in NUMERIC_TYPES:
             self.yerr = numpy.array([float(yerr)]*len(y))
         elif len(yerr) == len(y):
             self.yerr = numpy.array(yerr)
@@ -119,16 +118,19 @@ class Spectrum(Segment):
         self.xunit = xunit
         self.yunit = yunit
 
-        # How do you assert that an attribute must be of a certain type?
-        # Say someone adds a redshift after creating the Spectrum object. How can I check that the attribute value they enter is non-negative and of numeric type?
         if isinstance(z, types.NoneType):
             self.z = z
-        elif type(z) not in (types.FloatType, types.IntType, numpy.float_, numpy.int_):
+        elif type(z) not in NUMERIC_TYPES:
             raise InvalidRedshiftError(0)
         elif z < 0:
             raise InvalidRedshiftError(1)
         else:
             self.z = z
+
+
+    def __str__(self):
+        data = Table([self.x, self.y, self.yerr], names=('x','y','yerr'), meta={'z':self.z})
+        return data.__str__()
 
 
     def shift(self, z0, correct_flux=True):
@@ -358,16 +360,7 @@ class Sed(Segment, list):
 
 '''
 
-
-#        self._cache = []
-        if isinstance(z, types.NoneType):
-            self.z = z
-        elif type(z) not in (types.FloatType, types.IntType, numpy.float_, numpy.int_):
-            raise InvalidRedshiftError(0)
-        elif z < 0:
-            raise InvalidRedshiftError(1)
-        else:
-            self.z = z
+        self._z = z
         
         if len(x) != len(y):
             raise SegmentError('x and y must be of the same length.')
@@ -380,12 +373,16 @@ class Sed(Segment, list):
             elif len(yerr) != len(x):
                 raise SegmentError('x and yerr must be of the same length.')
 
-        if len(xunit) == 1:
+        if isinstance(xunit,types.NoneType):
+            xunit = [xunit]*len(x)
+        elif len(xunit) == 1:
             xunit = xunit*len(x)
         elif len(xunit) != len(x):
             raise SegmentError('xunit must have the same length as x.')
 
-        if len(yunit) == 1:
+        if isinstance(yunit,types.NoneType):
+            yunit = [yunit]*len(y)
+        elif len(yunit) == 1:
             yunit = yunit*len(y)
         elif len(yunit) != len(y):
             raise SegmentError('yunit must have the same length as y.')
@@ -395,9 +392,101 @@ class Sed(Segment, list):
             self.append(point)
 
 
-#    def set_cache(self):        
-#        self._cache = numpy.array(x, y, yerr, xunit, yunit)
-#    def update_cache(self):
+    @property
+    def x(self):
+        return self.toarray()[0]
+    @x.setter
+    def x(self, val):
+        if not isinstance(val, (types.ListType, numpy.ndarray)):
+            raise TypeError('x must be a numpy.ndarray or list')
+        #else:
+        #    for v in val:
+        #    pass
+    @x.deleter
+    def x(self):
+        raise AttributeError('Cannot delete property \'x\'.')
+    
+    @property
+    def y(self):
+        return self.toarray()[1]
+    @y.setter
+    def y(self):
+        raise AttributeError('Cannot set attribute \'y\'')
+    @y.deleter
+    def y(self):
+        raise AttributeError('Cannot delete attribute \'y\'.')
+
+    @property
+    def yerr(self):
+        return self.toarray()[2]
+    @yerr.setter
+    def yerr(self, val):
+        """Sets flux-error, yerr. If val is a single number, all fluxerrors are assigned val. If val is an iterable, then each point is assigned the consecutive values in val."""
+        try:
+            assert len(val) == len(self), 'yerr array and Sed object must have same length.'
+            for point, i in enumerate(self):
+                assert type(val[i]) in NUMERIC_TYPES, 'yerr must be of numeric type'
+                point.yerr = val[i]
+        except TypeError:
+            assert type(val) in NUMERIC_TYPES, 'yerr must be of numeric type'
+            for point in self:
+                point.yerr = val
+    @yerr.deleter
+    def yerr(self):
+        logging.info('Setting \'yerr\' to None.')
+        self._yerr=None
+
+    @property
+    def xunit(self):
+        return self.toarray()[3]
+    @xunit.setter
+    def xunit(self, val):
+        """Sets all x-unit values to val"""
+        if not isinstance(val, types.StringType):
+            raise TypeError('val must be a string.')
+        for point in self:
+            point.xunit = val
+    @xunit.deleter
+    def xunit(self):
+        logging.info('Setting \'xunit\' to None.')
+        self._xunit=None
+
+    @property
+    def yunit(self):
+        return self.toarray()[4]
+    @yunit.setter
+    def yunit(self, val):
+        """Sets all y-unit values to val"""
+        if not isinstance(val, types.StringType):
+            raise TypeError('val must be a string.')
+        for point in self:
+            point.xunit = val
+    @yunit.deleter
+    def yunit(self):
+        self._yunit=None
+
+    @property
+    def z(self):
+        return self._z
+    @z.setter
+    def z(self, val):
+        if isinstance(val, types.NoneType):
+            self._z = val
+        elif type(val) not in NUMERIC_TYPES:
+            raise InvalidRedshiftError(0)
+        elif val < 0:
+            raise InvalidRedshiftError(1)
+        else:
+            self._z = numpy.float_(val)
+    @z.deleter
+    def z(self):
+        logging.info('Setting \'z\' to None.')
+        self._z = None
+
+
+    def __str__(self):
+        data = Table([self.x, self.y, self.yerr, self.xunit, self.yunit], names=('x','y','yerr','xunit','yunit'), meta={'z':self.z})
+        return data.__str__()
 
 
     def shift(self, z0, correct_flux = True):
@@ -558,7 +647,10 @@ class Sed(Segment, list):
         '''Add a PhotometricPoint to Sed object.
         Args:
             point (PhotometricPoint): A PhotometricPoint object.'''
-        self.append(point)
+        if isinstance(point, PhotometricPoint):
+            self.append(point)
+        else:
+            raise TypeError('Only PhotometricPoints may be added to a Sed object.')
 
 
     def remove_point(self, index):
@@ -956,7 +1048,7 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
 
     Args:
         aggrseds (iterable): an iterable of Seds, Spectra or AggregateSeds to stack. You cannot mix-and-match Seds and Spectra together in this iterable [unless they are contained in an AggregateSed]
-        binsize (tuple): a tuple of the numerical value to bin the spectral axis by and the binsize units, written like (binsize, 'units'). The fluxes within each bin are combined according to the statistic argument. binsize is also the resolution of the stacked SED. By default, 'units' is assumed to be 'Angstroms.'
+        binsize (tuple): numerical value to bin the spectral axis by. The fluxes within each bin are combined according to the statistic argument. binsize is also the resolution of the stacked SED.
 
     Kwargs:
         statistic (str, func): the statistic to use for combining the fluxes in each bin. The possible statistics are:
@@ -966,27 +1058,28 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
             func - a user-defined function for combining the fluxes in each bin.
 
         fill (str): switch that decides what to do with bins that have no flux counts in them. There are two options:
-            'nan' - the Y-values of unpopulated X-values are assigned numpy.nan
+            'fill' - the Y-values of unpopulated X-values are assigned numpy.nan
             'remove' - (Default) removes the unpopulated X-Y pair from the stacked SED
 
         smooth (bool): specifies whether the stacked SED should be smoothed using a boxcar method (True) or not (False)
 
         smooth_binsize (int): the size of the boxcar. Default is 10.
 
-        log_bin (bool: specifies how to bin the Stack
+        logbin (bool: specifies how to bin the Stack
             False - (default) linear binning
             True - logarithmic binning
-            If the Stack's spectral axis ranges over 3 or 4 decades, it is advised to set log_bin = True
+            If the Stack's spectral axis ranges over 3 or 4 decades, it is advised to set logbbin = True
 
     Returns:
         Sed object, with attribute 'count'. Attributes z, xunit and yunit are taken from the first Segment in the list.
             counts - number of flux values combined per binsize. plotting 'counts' against 'x' gives a histogram of the flux counts per spectral bin.
 
+    Note: If logbin=True, the binsize should be entered in logspace. E.g. if 1,000 < x < 100,000 (or 3.0 < log10(x) < 5.0), and you wish to bin the spectral axis evenly in logspace, choosing binsize = 0.1 will produce 20 bins.
+
     '''
 
-
-    if type(binsize) not in (types.FloatType, types.IntType, numpy.float_, numpy.int_):
-        raise ValueError('binsize[0] must be of numeric type int or float.')
+    if type(binsize) not in NUMERIC_TYPES:
+        raise ValueError('binsize must be of numeric type int or float.')
 
     if type(smooth) not in (types.BooleanType, numpy.bool_):
         raise ValueError('keyword argument smooth must be \'True\' or \'False\'.')
@@ -997,9 +1090,6 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
 #                        '(binsize, \'units\')')
 #    if not isinstance(binsize[1], str):
 #        raise Exception('units must be a string recognized by the AstroPy.units package')
-
-
-    # ADD: parameter and algorthim to deal with logarithmic binning
 
     # making "giant"/global arrays
     giant_spec = numpy.array([])
@@ -1068,9 +1158,9 @@ def shift(spec, flux, z, z0):
 
     if z is None:
         raise NoRedshiftError
-    if type(z0) not in (types.FloatType, numpy.float_, types.IntType, numpy.int_):
+    if type(z0) not in NUMERIC_TYPES:
         raise InvalidRedshiftError(0)
-    if type(z) not in (types.FloatType, numpy.float_, types.IntType, numpy.int_):
+    if type(z) not in NUMERIC_TYPES:
         raise InvalidRedshiftError(0)
     if z0 < 0:
         raise InvalidRedshiftError(1)
