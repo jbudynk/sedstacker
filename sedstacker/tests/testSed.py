@@ -171,6 +171,12 @@ class TestSed(unittest.TestCase):
 
         numpy.testing.assert_array_equal(sed.x, numpy.array([4477.9, 5657.1, 6370.0, 240000.]))
 
+        sed.yerr = 1e-10
+        numpy.testing.assert_array_equal(sed.yerr, numpy.array([1e-10]*len(sed)))
+        with self.assertRaises(AssertionError):
+            sed.yerr = [1e-13]
+        
+
 
 if __name__ == '__main__':
     unittest.main()
