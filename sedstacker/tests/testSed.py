@@ -146,7 +146,7 @@ class TestSed(unittest.TestCase):
                   xunit = self._xunit, yunit = self._yunit,
                   z = self._z)
 
-        sedarray = sed.toarray()
+        sedarray = sed._toarray()
         self.assertEqual(sedarray[1][0], self._y[0])
 
 
