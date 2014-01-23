@@ -14,12 +14,6 @@ from sedstacker import calc
 from sedstacker.config import NUMERIC_TYPES
 from sedstacker.exceptions import NoRedshiftError, InvalidRedshiftError, SegmentError, OutsideRangeError, NotASegmentError, PreExistingFileError
 
-# UNRESOLVED ISSUES
-#
-# 1. shifting SEDs - right now, only works for x in wavelength units.
-#                    need to implement for other units, like freq and
-#                    energy
-
 
 logger=logging.getLogger(__name__)
 formatter=logging.Formatter('%(levelname)s:%(message)s')
@@ -91,14 +85,27 @@ class Segment(object):
 class Spectrum(Segment):
 
     def __init__(self, x=[], y=[], yerr=None, xunit='AA', yunit='erg/s/cm**2/AA', z=None):
-        '''Creates and Returns a Spectrum.
+        '''
+        Creates and Returns a Spectrum.
+
         Kwargs:
             x (list): The spectral coordinates. Default value is None.
             y (list): The flux values. Default value is None.
             yerr (list, float, int): The errors on the flux values. Default value is None.
             xunit (str): The spectral coordinate units. Default value is 'AA'.
             yunit (str): The flux coordinates. Default value is 'erg/s/cm**2/AA'.
-            z (float): The redshift of the Sed. Default value is None.'''
+            z (float): The redshift of the Sed. Default value is None.
+
+        Ex:
+
+        >>> # Create dummy spectral data
+        >>> wavelength = numpy.arange(1200, 10000, 1)
+        >>> flux = numpy.random.rand(wavelength.size())
+        >>> flux_err = flux*0.01
+        >>>
+        >>> # Create a Spectrum of an object at redshift 0.32
+        >>> spectrum = Spectrum(x=wavelength, y=flux, yerr=flux_err, xunit="Angstrom", yunit="None", z=0.32)
+        '''
 
         if len(x) != len(y):
             raise SegmentError('x and y must be of the same length.')
@@ -148,16 +155,22 @@ class Spectrum(Segment):
 
         Returns:
             A new Spectrum object with the redshifted spectrum.
+
+        Ex:
+
+        >>> # Shift the spectrum to rest frame
+        >>> rf_spectrum = spectrum.shift(0)
+        >>>
+        >>> # Shift the spectrum to rest frame, without correcting the flux
+        >>> rf_spectrum = spectrum.shift(0, correct_flux=False)
+
         '''
 
-        spec = self.x
-        flux = self.y
-
         if correct_flux:
-            spec_z0, flux_z0 = shift(spec, flux, self.z, z0)
+            spec_z0, flux_z0 = shift(self.x, self.y, self.z, z0)
         else:
-            spec_z0 = (1 + z0) * spec / (1+self.z)
-            flux_z0 = flux
+            spec_z0 = (1 + z0) * self.x / (1+self.z)
+            flux_z0 = self.y
 
         spec = Spectrum(x=spec_z0, y=flux_z0, yerr=self.yerr,
                         xunit=self.xunit, yunit=self.yunit, z=z0)
@@ -169,25 +182,10 @@ class Spectrum(Segment):
 
     def normalize_at_point(self, x0, y0, dx=50, norm_operator=0, correct_flux=False, z0=None):
 
-        '''Normalizes the SED such that at spectral coordinate x0,
-        the flux of the SED is y0.
+        '''Normalizes the spectrum such that at spectral coordinate x0,
+        the flux of the spectrum is y0.
 
         normalize_at_point() takes the average flux within a range of spectral values [x0-dx, x0+dx] centered on x0 as the observed flux at x0.
-
-        >>> # initializing dummy spectrum
-        >>> x = numpy.arange(3000,9500,0.5)
-        >>> y = numpy.random.rand(x.size)
-        >>> yerr = y*0.01
-        >>> spec = Spectrum(x=x,y=y,yerr=yerr,z=0.3)
-        >>>
-        >>> # normalize the spectrum "spec" to 1.0 erg/s/cm**2/AA at 3600.0 AA
-        >>> norm_spec = spec.normalize_at_point(3600.0, 1.0, dx=70)
-        >>> norm_spec.y
-        array([ 1.13493095,  0.40622771,  0.61081693, ...,  1.87997373,
-                0.48542037,  0.02411532])
-        >>>
-        >>> norm_spec.norm_constant
-        2.0265575749283653
 
         Args:
             x0 (float, int): The spectral coordinate to normalize the SED at. x0 is in Angstroms.
@@ -201,7 +199,26 @@ class Spectrum(Segment):
             correct_flux (bool): kwarg to correct for flux dimming/brightening due to redshift. Meant for SEDs that were shifted only by wavelength (i.e. the flux was not corrected for the intrinsic dimming/brightening due to redshift). If correct_flux = True, then the flux is corrected so that the integrated flux at the current redshift is equal to that at the original redshift.Default value is False.
             z0 (float or int): The original redshift of the source. Used only if correct_flux = True.
 
-        Requires that the SED has at least 4 photometric points'''
+        Requires that the SED has at least 4 photometric points.
+
+        Ex:
+
+        >>> # initializing dummy spectrum
+        >>> x = numpy.arange(3000, 9500, 0.5)
+        >>> y = numpy.linspace(1, 1000, x.size)
+        >>> yerr = y*0.01
+        >>> spec = Spectrum(x=x,y=y,yerr=yerr,z=0.3)
+        >>> 
+        >>> # normalize the spectrum "spec" to 1.0 erg/s/cm**2/AA at 3600.0 AA
+        >>> norm_spec = spec.normalize_at_point(3600.0, 1.0, norm_operator=0, dx=70)
+        >>> norm_spec.y
+        >>> array([  0.01072261,   0.01154666,   0.01237072, ...,  10.72095858,
+                    10.72178263,  10.72260668])
+        
+        >>> norm_spec.norm_constant
+        0.010722606684739769
+
+        '''
 
         numpy.seterr(invalid='raise')
 
@@ -270,10 +287,28 @@ class Spectrum(Segment):
             z0 (float or int): The original redshift of the source. Used if correct_flux = True.
 
         The Spectrum must have at least 2 points between minWavelength and maxWavelength.
+
+        Ex:
+        
+        >>> # initializing dummy spectrum
+        >>> x = numpy.arange(3000, 9500, 0.5)
+        >>> y = numpy.linspace(1, 1000, x.size)
+        >>> yerr = y*0.01
+        >>> spec = Spectrum(x=x,y=y,yerr=yerr,z=0.3)
+        >>> 
+        >>> # normalize the spectrum over its full range
+        >>> norm_spec = spec.normalize_by_int()
+        >>> norm_spec.y
+        >>> array([  3.07455874e-07,   3.31084493e-07,   3.54713112e-07, ...,
+                     3.07408617e-04,   3.07432246e-04,   3.07455874e-04])
+        
+        >>> norm_spec.norm_constant
+        3.0745587412510564e-07
+
         '''
 
         flux = numpy.ma.masked_invalid(self.y)
-        fluxerr = self.yerr
+        fluxerr = numpy.ma.masked_invalid(self.yerr)
 
         if minWavelength == 'min':
             minWavelength=self.x.min()
@@ -309,15 +344,6 @@ class Spectrum(Segment):
 
     def write(self, filename, xunit='AA', yunit='erg/s/cm**2/AA', fmt='ascii'):
         '''Write Spectrum to file.
-        Ex:
-        # x y
-        1941.8629     0.046853197
-        1942.5043     0.059397754
-        1943.1456     0.032893488
-        1943.7870     0.058623008
-        ...            ... 
-        10567.7890     0.046843890
-        10568.4571     0.059888754
 
         Args:
             filename (str): The name of the output file.
@@ -325,7 +351,23 @@ class Spectrum(Segment):
         Kwargs:
             xunit (str): Default unit is Angstroms. Converts all the spectral data in Spectrum to these units.
             yunit (str): Default unit is erg/s/cm**2/AA. Converts all the flux data in Spectrum to these units.
-            fmt (str): The format for the output file. The default file format is 'ascii'. For release 1.0, only ASCII files will be supported.'''
+            fmt (str): The format for the output file. The default file format is 'ascii'. For release 1.0, only ASCII files will be supported.
+
+        >>> spectrum.write('my_data_directory/sed_data.txt')
+
+        ..code-block::
+            % more my_data_directory/sed_data.txt
+
+            x y
+            1941.8629     0.046853197
+            1942.5043     0.059397754
+            1943.1456     0.032893488
+            1943.7870     0.058623008
+            ...            ... 
+            10567.7890     0.046843890
+            10568.4571     0.059888754
+
+        '''
 
         if os.path.exists(filename):
             raise PreExistingFileError(filename)
@@ -346,21 +388,21 @@ class Sed(Segment, list):
             xunit (list, str): The spectral coordinate units. Default value is ['AA'].
             yunit (list, str): The flux coordinates. Default value is ['erg/s/cm**2/AA'].
             z (float): The redshift of the Sed. Default value is None.
+
         Raises:
             SegmentError
         
-        x and y must have the same length. If the kwarg of yerr is a single value YERR, then all (x,y) SED points will have error YERR.
+        x and y must have the same length. If the kwarg of yerr is a single value 'YERR', then all (x,y) SED points will have error 'YERR'.
+
         >>> sed = Sed(x=[1212.0, 3675.0, 4856.0], y=[1.456e-11, 3.490e-11, 5.421e-11], yerr=1.0e-13, z=0.02)
-        >>> for point in sed:
-        ...     print point.yerr
-        ...
+        >>> sed.yerr
         1.0e-13
         1.0e-13
         1.0e-13
 
-'''
-
-        self._z = z
+        '''
+        
+        self.z = z
         
         if len(x) != len(y):
             raise SegmentError('x and y must be of the same length.')
@@ -393,7 +435,7 @@ class Sed(Segment, list):
 
     @property
     def x(self):
-        return self.toarray()[0]
+        return self._toarray()[0]
     @x.setter
     def x(self, val):
         assert len(val) == len(self), 'x array and Sed object must have same length.'
@@ -405,7 +447,7 @@ class Sed(Segment, list):
     
     @property
     def y(self):
-        return self.toarray()[1]
+        return self._toarray()[1]
     @y.setter
     def y(self):
         assert len(val) == len(self), 'x array and Sed object must have same length.'
@@ -417,7 +459,7 @@ class Sed(Segment, list):
 
     @property
     def yerr(self):
-        return self.toarray()[2]
+        return self._toarray()[2]
     @yerr.setter
     def yerr(self, val):
         #Sets flux-error, yerr. If val is a single number, all fluxerrors are assigned val. If val is an iterable, then each point is assigned the consecutive values in val.
@@ -437,7 +479,7 @@ class Sed(Segment, list):
 
     @property
     def xunit(self):
-        return self.toarray()[3]
+        return self._toarray()[3]
     @xunit.setter
     def xunit(self, val):
         #Sets all x-unit values to val
@@ -452,7 +494,7 @@ class Sed(Segment, list):
 
     @property
     def yunit(self):
-        return self.toarray()[4]
+        return self._toarray()[4]
     @yunit.setter
     def yunit(self, val):
         #Sets all y-unit values to val
@@ -489,42 +531,44 @@ class Sed(Segment, list):
         return data.__str__()
 
 
-    def shift(self, z0, correct_flux = True):
+    def shift(self, z0, correct_flux=True):
         '''
-        Redshifts the SED by means of cosmological expansion.
-
+        Redshifts the spectrum by means of cosmological expansion.
+        
         Args:
             z0 (float, int): Target redshift to shift the SED/spectrum to
         
         Kwargs:
-            correct_flux (bool): If True, the flux will be corrected for the intrinsic
-            dimming/brightening due to shifting the spectrum.
-            If False, only the spectral coordinates will be shifted; the flux remains
-            the same.
-        
+            correct_flux (bool): If True, the flux will be corrected for the
+            intrinsic dimming/brightening due to shifting the spectrum.
+            If False, only the spectral coordinates will be shifted; the flux
+            remains the same.
+
         Returns:
-            A new Sed object with the redshifted SED.
+            A new Sed object with the redshifted spectrum.
+
+        Ex:
+
+        >>> # Shift the SED to rest frame
+        >>> rf_spectrum = sed.shift(0)
+        >>>
+        >>> # Shift the spectrum to rest frame, without correcting the flux
+        >>> rf_spectrum = sed.shift(0, correct_flux=False)
+
         '''
 
-        sedarray = self.toarray()
-        spec = sedarray[0]
-        flux = sedarray[1]
-        fluxerr = sedarray[2]
-        xunit = sedarray[3]
-        yunit = sedarray[4]
-
         if correct_flux:
-            spec_z0, flux_z0 = shift(spec, flux, self.z, z0)
+            spec_z0, flux_z0 = shift(self.x, self.y, self.z, z0)
         else:
-            spec_z0 = (1 + z0) * spec / (1+self.z)
-            flux_z0 = flux
-        sed = Sed(x=spec_z0, y=flux_z0, yerr=fluxerr,
-                   xunit=xunit, yunit=yunit, z=z0)
+            spec_z0 = (1 + z0) * self.x / (1+self.z)
+            flux_z0 = self.y
 
+        spec = Sed(x=spec_z0, y=flux_z0, yerr=self.yerr,
+                        xunit=self.xunit, yunit=self.yunit, z=z0)
         # keep attributes of old sed
-        _get_setattr(sed,self)
+        _get_setattr(spec,self)
 
-        return sed
+        return spec
 
 
     def normalize_at_point(self, x0, y0, norm_operator=0, correct_flux=False, z0=None):
@@ -553,14 +597,37 @@ class Sed(Segment, list):
             z0 (float or int): The original redshift of the source.
             Used only if correct_flux = True.
 
-            '''
+        Ex:
 
-        sedarray = self.toarray()
-        spec = sedarray[0]
-        flux = sedarray[1]
-        fluxerr = sedarray[2]
-        xunit = sedarray[3]
-        yunit = sedarray[4]
+        >>> # initializing dummy SED
+        >>> from numpy import logspace, linspace, log10
+        >>> x = logspace(log10(3000), log10(70000), num=20)
+        >>> y = linspace(1, 1000, num=x.size)*1e-5
+        >>> yerr = y*0.01
+        >>> sed = Sed(x=x,y=y,yerr=yerr,z=0.3)
+        >>>
+        >>> # normalize the SED at 6000.0 Angstroms and 1e-3 erg/s/cm**2/Angstrom
+        >>> norm_sed = sed.normalize_at_point(6000, 1e-3, norm_operator=0)
+        >>>
+        >>> norm_sed.y
+        array([  4.73225405e-06,   2.53549191e-04,   5.02366127e-04,
+                 7.51183064e-04,   1.00000000e-03,   1.24881694e-03,
+                 1.49763387e-03,   1.74645081e-03,   1.99526775e-03,
+                 2.24408468e-03,   2.49290162e-03,   2.74171856e-03,
+                 2.99053549e-03,   3.23935243e-03,   3.48816936e-03,
+                 3.73698630e-03,   3.98580324e-03,   4.23462017e-03,
+                 4.48343711e-03,   4.73225405e-03])
+        >>>
+        >>> norm_sed.norm_constant
+        0.473225404732254
+
+        '''
+
+        spec = self.x
+        flux = self.y
+        fluxerr = self.yerr
+        xunit = self.xunit
+        yunit = self.yunit
 
         if correct_flux:
             fluxz = correct_flux_(spec, flux, self.z, z0)
@@ -603,14 +670,35 @@ class Sed(Segment, list):
 
         The SED must have at least 2 points between minWavelength and maxWavelength.
 
+        Ex:
+
+        >>> # initializing dummy SED
+        >>> from numpy import logspace, linspace, log10
+        >>> x = logspace(log10(3000), log10(70000), num=20)
+        >>> y = linspace(1, 1000, num=x.size)*1e-5
+        >>> yerr = y*0.01
+        >>> sed = Sed(x=x,y=y,yerr=yerr,z=0.3)
+        >>> # normalize the SED over its full range
+        >>> norm_sed = sed.normalize_by_int()
+        >>> norm_sed.y
+        array([  2.05343055e-08,   1.10020647e-06,   2.17987864e-06,
+                 3.25955081e-06,   4.33922298e-06,   5.41889515e-06,
+                 6.49856732e-06,   7.57823949e-06,   8.65791166e-06,
+                 9.73758383e-06,   1.08172560e-05,   1.18969282e-05,
+                 1.29766003e-05,   1.40562725e-05,   1.51359447e-05,
+                 1.62156168e-05,   1.72952890e-05,   1.83749612e-05,
+                 1.94546333e-05,   2.05343055e-05])
+        >>>
+        >>> norm_sed.norm_constant
+        0.0020534305518967668
+
         '''
 
-        sedarray = self.toarray()
-        spec = sedarray[0]
-        flux = numpy.ma.masked_invalid(sedarray[1])
-        fluxerr = sedarray[2]
-        xunit = sedarray[3]
-        yunit = sedarray[4]
+        spec = self.x
+        flux = numpy.ma.masked_invalid(self.y)
+        fluxerr = numpy.ma.masked_invalid(self.yerr)
+        xunit = self.xunit
+        yunit = self.yunit
 
         if minWavelength == 'min':
             minWavelength=spec.min()
@@ -644,9 +732,40 @@ class Sed(Segment, list):
 
 
     def add_point(self, point):
-        '''Add a PhotometricPoint to Sed object.
+        '''
+        Add a PhotometricPoint to Sed object.
+
         Args:
-            point (PhotometricPoint): A PhotometricPoint object.'''
+            point (PhotometricPoint): A PhotometricPoint object.
+
+        Ex:
+
+        >>> print sed
+           x       y   yerr xunit yunit
+        -------- ----- ---- ----- -----
+         12491.0 20.81 0.09    AA   mag
+         21590.4 20.39  nan    AA   mag
+         36000.0 19.78 0.09    AA   mag
+         45000.0 19.64 0.09    AA   mag
+         58000.0 19.27 0.09    AA   mag
+         80000.0 19.18 0.09    AA   mag
+        240000.0  18.0 0.82    AA   mag
+
+        >>> point = PhotometricPoint(x=700000, y=17.10, yerr=0.92, xunit="AA", yunit='mag')
+        >>> sed.add_point(point)
+        >>> print sed
+           x       y   yerr xunit yunit
+        -------- ----- ---- ----- -----
+         12491.0 20.81 0.09    AA   mag
+         21590.4 20.39  nan    AA   mag
+         36000.0 19.78 0.09    AA   mag
+         45000.0 19.64 0.09    AA   mag
+         58000.0 19.27 0.09    AA   mag
+         80000.0 19.18 0.09    AA   mag
+        240000.0  18.0 0.82    AA   mag
+        700000.0  17.1 0.92    AA   mag   # new point
+
+        '''
         if isinstance(point, PhotometricPoint):
             self.append(point)
         else:
@@ -656,7 +775,36 @@ class Sed(Segment, list):
     def remove_point(self, index):
         '''Remove a PhotometricPoint from Sed object.
         Args:
-            index (int): the index of the PhotometricPoint in the list to remove.'''
+            index (int): the index of the PhotometricPoint in the list to remove.
+
+        Ex:
+
+        >>> print sed
+           x       y   yerr xunit yunit
+        -------- ----- ---- ----- -----
+         12491.0 20.81 0.09    AA   mag
+         21590.4 20.39  nan    AA   mag
+         36000.0 19.78 0.09    AA   mag
+         45000.0 19.64 0.09    AA   mag   # remove this point
+         58000.0 19.27 0.09    AA   mag
+         80000.0 19.18 0.09    AA   mag
+        240000.0  18.0 0.82    AA   mag
+        700000.0  17.1 0.92    AA   mag
+
+        >>> sed.remove_point(3)
+        >>> print sed
+           x       y   yerr xunit yunit
+        -------- ----- ---- ----- -----
+         12491.0 20.81 0.09    AA   mag
+         21590.4 20.39  nan    AA   mag
+         36000.0 19.78 0.09    AA   mag
+         58000.0 19.27 0.09    AA   mag
+         80000.0 19.18 0.09    AA   mag
+        240000.0  18.0 0.82    AA   mag
+        700000.0  17.1 0.92    AA   mag
+
+        '''
+
         self.pop(index)
 
 
@@ -684,20 +832,19 @@ class Sed(Segment, list):
                 self.append(points)
 
 
-    def toarray(self):
+    def _toarray(self):
         '''Convert a Sed to a 5-dimensional tuple of arrays of x, y, yerr, xunit and yunit.
 
         Example: If
 
-        >>> sedarray = Sed().toarray()
+        >>> sedarray = Sed()._toarray()
 
-        then
-
-        sedarray[0] --> spectral axis, 'x'
-        sedarray[1] --> flux axis, 'y'
-        sedarray[2] --> flux-error axis, 'yerr'
-        sedarray[3] --> xunit values, 'xunit'
-        sedarray[4] --> yunit values, 'yunit'
+        then::
+            sedarray[0] --> spectral axis, 'x'
+            sedarray[1] --> flux axis, 'y'
+            sedarray[2] --> flux-error axis, 'yerr'
+            sedarray[3] --> xunit values, 'xunit'
+            sedarray[4] --> yunit values, 'yunit'
         
         Returns:
             5-dimensional array containing the spectral, flux, flux-error,
@@ -710,13 +857,6 @@ class Sed(Segment, list):
         xunit = numpy.array([p.xunit for p in self])
         yunit = numpy.array([p.yunit for p in self])
 
-        #sedarray = Table({'x':spec,
-        #                 'y':flux,
-        #                 'yerr':fluxerr,
-        #                 'xunit':xunit,
-        #                 'yunit':yunit},
-        #                 names=['x','y','yerr','xunit','yunit'])
-
         sedarray = spec, flux, fluxerr, xunit, yunit
 
         return sedarray
@@ -724,29 +864,37 @@ class Sed(Segment, list):
 
     def write(self, filename, xunit='AA', yunit='erg/s/cm**2/AA', fmt='ascii'):
         '''Write Sed to file.
-        Ex:
-
-        x y
-        1941.8629     0.046853197
-        1942.5043     0.059397754
-        1943.1456     0.032893488
-        1943.7870     0.058623008
-        ...            ... 
-        10567.7890     0.046843890
-        10568.4571     0.059888754
 
         Args:
             filename (str): The name of the output file.
        
         Kwargs:
-            xunit (str): Default unit is Angstroms. Converts all the spectral data in Sed to these units.
-            yunit (str): Default unit is erg/s/cm**2/AA. Converts all the flux data in Sed to these units.
-            fmt (str): The format for the output file. The default file format is 'ascii'. For release 1.0, only ASCII files will be supported.'''
+            xunit (str): Default unit is Angstroms. 
+            yunit (str): Default unit is erg/s/cm**2/AA.
+            fmt (str): The format for the output file. The default file format is 'ascii'. For release 1.0, only ASCII files will be supported.
+
+        Ex:
+
+        >>> sed.write('my_data_directory/sed_data.txt')
+
+        ..code-block::
+            % more my_data_directory/sed_data.txt
+
+            x y
+            1941.8629     0.046853197
+            1942.5043     0.059397754
+            1943.1456     0.032893488
+            1943.7870     0.058623008
+            ...            ... 
+            10567.7890     0.046843890
+            10568.4571     0.059888754
+
+        '''
 
         if os.path.exists(filename):
             raise PreExistingFileError(filename)
         else:
-            sed = self.toarray()
+            sed = self._toarray()
             if hasattr(self, 'counts'):
                 segment_arrays = Table({'x':sed[0],
                                         'y':sed[1],
@@ -776,14 +924,6 @@ class AggregateSed(list):
         for segment in segments:
             if not isinstance(segment, Segment):
                 raise NotASegmentError
-            elif isinstance(segment, Sed):
-                sedarray = segment.toarray()
-                self.x.append(sedarray[0])
-                self.y.append(sedarray[1])
-                self.yerr.append(sedarray[2])
-                self.xunit.append(sedarray[3])
-                self.yunit.append(sedarray[4])
-                self.z.append(segment.z)
             else:
                 self.x.append(segment.x)
                 self.y.append(segment.y)
@@ -791,15 +931,7 @@ class AggregateSed(list):
                 self.xunit.append(segment.xunit)
                 self.yunit.append(segment.yunit)
                 self.z.append(segment.z)
-            self.append(segment)
-
-#        self = self
-#        self.x = self.x
-#        self.y = self.y
-#        self.yerr = self.yerr
-#        self.xunit = self.xunit
-#        self.yunit = self.yunit
-#        self.z = self.z
+                self.append(segment)
 
 # If I want to concentate all the spec and flux arrays:
 # [in the for loop: count += len(segment.x)]
@@ -835,6 +967,19 @@ class AggregateSed(list):
         
         Returns:
             A new AggregateSed object with the redshifted SED.
+
+        Ex:
+        
+        >>> # group 6 segments into an AggregateSed,
+        >>> # then shift them all to z=1.0.
+        >>> aggsed = AggregateSed([sed1, sed2, sed3, sed4, spec1, spec2])
+        >>> aggsed_z1 = aggsed.shift(1)
+
+        If 'sed2' had no redshift (i.e. sed2.z = None) and we shift the AggregateSed, a warning appears, stating the index of the segment that is excluded from the shifted AggregateSed.
+
+        >>> aggsed_z1 = aggsed.shift(1)
+        WARNING: Excluding AggregateSed[1] from the shifted AggregateSed.
+
         '''
 
         shifted_segments = []
@@ -859,12 +1004,12 @@ class AggregateSed(list):
 
 
     def normalize_at_point(self, x0, y0, norm_operator=0, correct_flux=False, z0=None):
-        '''Normalizes the SED such that at spectral coordinate x0,
-           the flux of the SED is y0.
+        '''Normalizes the SEDs such that at spectral coordinate x0,
+           the flux of the SEDs is y0.
 
         Args:
-            x0 (float, int): The spectral coordinate to normalize the SED at
-            y0 (float, int): The flux value to normalize the SED to
+            x0 (float, int): The spectral coordinate to normalize the SEDs at
+            y0 (float, int): The flux value to normalize the SEDs to
 
         Kwargs:
             correct_flux (bool): kwarg to correct for flux dimming/brightening due to redshift. Meant for SEDs that were shifted only by wavelength (i.e. the flux was not corrected for the intrinsic dimming/brightening due to redshift). If correct_flux = True, then the flux is corrected so that the integrated flux at the current redshift is equal to that at the original redshift.Default value is False.
@@ -879,7 +1024,25 @@ class AggregateSed(list):
             SegmentError: If a Sed or Spectrum has less than 4 points, then the Sed or
             Spectrum is excluded from the returned normalized AggregateSed.
 
-        Requires that the Seds has at least 4 photometric points'''
+        Usage is the same as it is for Sed and Spectrum objects.
+        Ex:
+
+        >>> # group 6 segments into an AggregateSed,
+        >>> # then normalize them at point (5000 AA, 1 erg/s/cm**2/AA)
+        >>> aggsed = AggregateSed([sed1, sed2, sed3, sed4, spec1, spec2])
+        >>> norm_seds = seds.normalize_at_point(5000, 1)
+        >>>
+        >>> # see the normalization constant for sed2
+        >>> # in the normalized AggregateSed
+        >>> norm_seds[1].norm_constant
+        0.473225404732254
+
+        If 'sed2' has no data at 5000 Angstroms, 'sed2' will not be normalized and will be exluded from 'norm_seds'. A warning states the index of the segment that is excluded from the shifted AggregateSed.
+
+        >>> norm_seds = seds.normalize_at_point(5000, 1)
+        WARNING: Excluding AggregateSed[1] from the normalized AggregateSed.
+
+        '''
 
         if isinstance(z0,(types.FloatType, types.IntType, numpy.float_,numpy.int_,types.NoneType)):
             z0 = [z0]*len(self.segments)
@@ -906,20 +1069,38 @@ class AggregateSed(list):
 
 
     def normalize_by_int(self, minWavelength='min', maxWavelength='max', correct_flux=False, z0=None):
-        '''Normalises the SED such that the area under the specified wavelength range is equal to 1.
+        '''Normalises the SEDs such that the area under the specified wavelength range is equal to 1.
 
         Kwargs:
             minWavelength (float or 'min'): minimum wavelength of range over which to normalise SED
             maxWavelength (float or 'max'): maximum wavelength of range over which to normalise SED
             correct_flux (bool): switch used to correct for SEDs that were shifted to some redshift without taking into account flux brightening/dimming due to redshift
             z0 (float or int): A list or array of the original redshifts of the sources. The redshifts must be in the same order as the Segments appear in the AggregateSed (i.e. assuming aggsed is an AggregateSed, z0[0] is the original redshift of aggsed[0], z0[1] is the original redshift of aggsed[1], etc.). Used only if correct_flux = True.
-        Raises:
-            OutisdeRangeError: If a Sed's or Spectrum's spectral range does not cover point x0,
-            then the segment is excluded from the returned normalized AggregateSed.
-            SegmentError: If a Sed or Spectrum has less than 4 points, then the Sed or
-            Spectrum is excluded from the returned normalized AggregateSed.
 
-        Requires that the Segments have at least 4 points.
+        Raises:
+            OutisdeRangeError: If a Sed's or Spectrum's spectral range does not cover point x0, then the segment is excluded from the returned normalized AggregateSed.
+            SegmentError: If a Sed or Spectrum has less than 2 points within minWavelength and maxWavelength, then the Sed or Spectrum is excluded from the returned normalized AggregateSed.
+
+        Usage is the same as it is for Sed and Spectrum objects.
+        Ex:
+
+        >>> # group 6 segments into an AggregateSed,
+        >>> # then normalize them at point (5000 AA, 1 erg/s/cm**2/AA)
+        >>> aggsed = AggregateSed([sed1, sed2, sed3, sed4, spec1, spec2])
+        >>>
+        >>> # normalize the AggregateSed by the integrated flux
+        >>> # at optical wavelengths, 3000 AA to 10,000 AA
+        >>> norm_seds = seds.normalize_by_int(minWavelength=3000, maxWavelength=10000)
+        >>>
+        >>> # see the normalization constant for the 2nd segment
+        >>> # in the normalized AggregateSed
+        >>> norm_seds[1].norm_constant
+        0.473225404732254
+
+        If 'spec1' has no data within the range (minWavelength, maxWavelength), then 'spec1' will not be normalized and will be exluded from 'norm_seds'. A warning states the index of the segment that is excluded from the shifted AggregateSed.
+
+        >>> norm_seds = seds.normalize_at_point(5000, 1)
+        WARNING: Excluding AggregateSed[4] from the normalized AggregateSed.
 
         '''
 
@@ -947,8 +1128,16 @@ class AggregateSed(list):
 
     def add_segment(self, segment):
         '''Add a segment to the AggregateSed.
-           Args:
-               segment: A Segment object.'''
+            Args:
+                segment: A Segment object.
+
+        Ex:
+
+        >>> seds = AggregateSed([sed1,sed2,sed3,sed4,spec1,spec2])
+        >>> seds.add_segment(spec3)
+        >>> len(seds)
+        7
+        '''
 
 #        if isinstance(segments, types.ListType):
 #            for segment in segments:
@@ -961,21 +1150,12 @@ class AggregateSed(list):
         if isinstance(segment, Segment):
             self.append(segment)
             self.segments.append(segment)
-
             self.z.append(segment.z)
-            if isinstance(segment, Spectrum):
-                self.x.append(segment.x)
-                self.y.append(segment.y)
-                self.yerr.append(segment.yerr)
-                self.xunit.append(segment.xunit)
-                self.yunit.append(segment.yunit)
-            else:
-                sedarray = segment.toarray()
-                self.x.append(sedarray[0])
-                self.y.append(sedarray[1])
-                self.yerr.append(sedarray[2])
-                self.xunit.append(sedarray[3])
-                self.yunit.append(sedarray[4])
+            self.x.append(segment.x)
+            self.y.append(segment.y)
+            self.yerr.append(segment.yerr)
+            self.xunit.append(segment.xunit)
+            self.yunit.append(segment.yunit)
         else:
             raise NotASegmentError
 
@@ -983,7 +1163,16 @@ class AggregateSed(list):
     def remove_segment(self, segment):
         '''Remove a segment from the AggregateSed.
            Args:
-               segment: A Segment object.'''
+               segment: A Segment object.
+
+        Ex:
+
+        >>> seds = AggregateSed([sed1,sed2,sed3,sed4,spec1,spec2])
+        >>> seds.remove_segment(sed2)
+        >>> len(seds)
+        5
+
+        '''
 
         index = self.index(segment)
         self.x.pop(index)
@@ -998,16 +1187,9 @@ class AggregateSed(list):
 
 
     def write(self, filename, xunit='AA', yunit='erg/s/cm**2/AA', fmt='ascii'):
-        '''Write Sed to file.
-        Ex:
-        # x y
-        1941.8629     0.046853197
-        1942.5043     0.059397754
-        1943.1456     0.032893488
-        1943.7870     0.058623008
-        ...            ... 
-        10567.7890     0.046843890
-        10568.4571     0.059888754
+        '''Write an AggregateSed to file.
+
+        The Seds and Spectra are written to file one after the other, in the order they are indexed in the AggregateSed.
 
         Args:
             filename (str): The name of the output file.
@@ -1015,7 +1197,36 @@ class AggregateSed(list):
         Kwargs:
             xunit (str): Default unit is Angstroms. Converts all the spectral data in Sed to these units.
             yunit (str): Default unit is erg/s/cm**2/AA. Converts all the flux data in Sed to these units.
-            fmt (str): The format for the output file. The default file format is 'ascii'. For release 1.0, only ASCII files will be supported.'''
+            fmt (str): The format for the output file. The default file format is 'ascii'. For release 1.0, only ASCII files will be supported.
+
+        Ex:
+
+        >>> seds = AggregateSed([sed1,sed2,sed3,sed4,spec1,spec2])
+        >>> seds.write('my_data_directory/sed_data.txt')
+
+        ..code-block::
+            % more my_data_directory/sed_data.txt
+
+            x y
+            3823.0 0.0424           # first SED
+            4459.7 0.0409
+            5483.8 0.0217
+            4779.6 0.0345
+             ...    
+            80000.0 0.912
+            240000.0 1.245
+            1941.8629 0.046853197   # second SED
+            1942.5043 0.059397754
+            1943.1456 0.032893488
+            1943.7870 0.058623008
+             ...       
+            10567.7890 0.046843890
+            10568.4571 0.059888754
+             ...                    # and so on
+            
+
+        '''
+
         if os.path.exists(filename):
             raise PreExistingFileError(filename)
         else:
@@ -1132,11 +1343,34 @@ def create_from_points(points, z=None):
     Args:
         points (iterable): A collection (list, set, tuple) of PhotometricPoints
     Kwargs:
-        z (float): The redshift of the Sed. Default is None.'''
+        z (float): The redshift of the Sed. Default is None.
+
+    Ex:
+
+    >>> # Create list of dummy PhotometricPoints
+    >>> points = [PhotometricPoint(x=1+i, y=1+i, yerr=0.1*i) for i in range(10)]
+    >>>
+    >>> # Create a Sed from 'points'
+    >>> sed = create_from_points(points)
+    >>> print sed
+      x   y  yerr xunit     yunit     
+     --- --- ---- ----- --------------
+      1   1  0.0    AA erg/s/cm**2/AA
+      2   2  0.1    AA erg/s/cm**2/AA
+      3   3  0.2    AA erg/s/cm**2/AA
+      4   4  0.3    AA erg/s/cm**2/AA
+      5   5  0.4    AA erg/s/cm**2/AA
+      6   6  0.5    AA erg/s/cm**2/AA
+      7   7  0.6    AA erg/s/cm**2/AA
+      8   8  0.7    AA erg/s/cm**2/AA
+      9   9  0.8    AA erg/s/cm**2/AA
+     10  10  0.9    AA erg/s/cm**2/AA
+
+    '''
     
     sed = Sed()
     for point in points:
-        sed.append(point)
+        sed.add_point(point)
     sed.z = z
     return sed
 
