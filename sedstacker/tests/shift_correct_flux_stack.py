@@ -34,7 +34,6 @@ aggsed = AggregateSed(specs)
 norm_aggsed = aggsed.normalize_at_point(3500.0, 1.0)
 
 stack_spectra = stack(norm_aggsed, 10.0, 'avg', fill='fill')
-stack_ = stack_spectra.toarray()
 
 stack_spectra.write(test_directory+'stacked_spectra_maskcc10.dat')
 
@@ -42,7 +41,7 @@ stack_spectra = load_sed(test_directory+'stacked_spectra_maskcc10.dat')
 
 end = time.clock()
 
-plt.plot(stack_[0], stack_[1])
+plt.plot(stack_.x, stack_.y)
 plt.show()
 
 print ''
