@@ -223,7 +223,7 @@ class Spectrum(Segment):
             spec_indices[1] = max(self.x)
         if (x0-dx < min(self.x)) or (x0+dx > max(self.x)):
             high_lim = min((x0+dx, max(self.x)))
-            low_lim = max((x0+dx, min(self.x)))
+            low_lim = max((x0-dx, min(self.x)))
             logger.warning(' Spectrum does not cover full range used for determining normalization constant. Spectral range used: [{low}:{high}]'.format(low=repr(low_lim), high=repr(high_lim)))
 
         if correct_flux:
@@ -391,37 +391,36 @@ class Sed(Segment, list):
             point = PhotometricPoint(x=x[i], y=y[i], yerr=yerr[i], xunit=xunit[i], yunit=yunit[i])
             self.append(point)
 
-
     @property
     def x(self):
         return self.toarray()[0]
     @x.setter
     def x(self, val):
-        if not isinstance(val, (types.ListType, numpy.ndarray)):
-            raise TypeError('x must be a numpy.ndarray or list')
-        #else:
-        #    for v in val:
-        #    pass
+        assert len(val) == len(self), 'x array and Sed object must have same length.'
+        for i, point in enumerate(self):
+            point.x = val[i]
     @x.deleter
     def x(self):
-        raise AttributeError('Cannot delete property \'x\'.')
+        raise AttributeError('Cannot delete property x.')
     
     @property
     def y(self):
         return self.toarray()[1]
     @y.setter
     def y(self):
-        raise AttributeError('Cannot set attribute \'y\'')
+        assert len(val) == len(self), 'x array and Sed object must have same length.'
+        for i, point in enumerate(self):
+            point.y = val[i]
     @y.deleter
     def y(self):
-        raise AttributeError('Cannot delete attribute \'y\'.')
+        raise AttributeError('Cannot delete attribute y.')
 
     @property
     def yerr(self):
         return self.toarray()[2]
     @yerr.setter
     def yerr(self, val):
-        """Sets flux-error, yerr. If val is a single number, all fluxerrors are assigned val. If val is an iterable, then each point is assigned the consecutive values in val."""
+        #Sets flux-error, yerr. If val is a single number, all fluxerrors are assigned val. If val is an iterable, then each point is assigned the consecutive values in val.
         try:
             assert len(val) == len(self), 'yerr array and Sed object must have same length.'
             for point, i in enumerate(self):
@@ -433,7 +432,7 @@ class Sed(Segment, list):
                 point.yerr = val
     @yerr.deleter
     def yerr(self):
-        logging.info('Setting \'yerr\' to None.')
+        logging.info('Setting yerr to None.')
         self._yerr=None
 
     @property
@@ -441,14 +440,14 @@ class Sed(Segment, list):
         return self.toarray()[3]
     @xunit.setter
     def xunit(self, val):
-        """Sets all x-unit values to val"""
+        #Sets all x-unit values to val
         if not isinstance(val, types.StringType):
             raise TypeError('val must be a string.')
         for point in self:
             point.xunit = val
     @xunit.deleter
     def xunit(self):
-        logging.info('Setting \'xunit\' to None.')
+        logging.info('Setting xunit to None.')
         self._xunit=None
 
     @property
@@ -456,13 +455,14 @@ class Sed(Segment, list):
         return self.toarray()[4]
     @yunit.setter
     def yunit(self, val):
-        """Sets all y-unit values to val"""
+        #Sets all y-unit values to val
         if not isinstance(val, types.StringType):
             raise TypeError('val must be a string.')
         for point in self:
             point.xunit = val
     @yunit.deleter
     def yunit(self):
+        logging.info('Setting yunit to None.')
         self._yunit=None
 
     @property
@@ -480,12 +480,12 @@ class Sed(Segment, list):
             self._z = numpy.float_(val)
     @z.deleter
     def z(self):
-        logging.info('Setting \'z\' to None.')
+        logging.info('Setting z to None.')
         self._z = None
 
 
     def __str__(self):
-        data = Table([self.x, self.y, self.yerr, self.xunit, self.yunit], names=('x','y','yerr','xunit','yunit'), meta={'z':self.z})
+        data = Table([self.x, self.y, self.yerr, self.xunit, self.yunit], names=('x','y','yerr','xunit','yunit'))
         return data.__str__()
 
 
@@ -685,7 +685,7 @@ class Sed(Segment, list):
 
 
     def toarray(self):
-        '''Convert a Sed to a 5-dimensional array.
+        '''Convert a Sed to a 5-dimensional tuple of arrays of x, y, yerr, xunit and yunit.
 
         Example: If
 
