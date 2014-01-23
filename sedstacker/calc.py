@@ -66,17 +66,17 @@ def binup(y, x, xarr, statistic, binsize, fill, yerr, logbin = False):
 
     mask = numpy.ma.make_mask(skipit)
     if fill == 'fill':
-        out_xarr = xarr
-        out_yarr = fill_fill(mask, yarr)
-        out_err = fill_fill(mask, outerr)
+        xarr = xarr
+        yarr = fill_fill(mask, yarr)
+        outerr = fill_fill(mask, outerr)
         counts = count
     else:
-        out_xarr = fill_remove(mask, xarr)
-        out_yarr = fill_remove(mask, yarr)
-        out_err = fill_remove(mask, outerr)
+        xarr = fill_remove(mask, xarr)
+        yarr = fill_remove(mask, yarr)
+        outerr = fill_remove(mask, outerr)
         counts = fill_remove(mask, count)
 
-    return out_yarr, out_xarr, out_err, counts
+    return yarr, xarr, outerr, counts
 
 
 def wavg_bin(y_bin, yerr_bin, count):
