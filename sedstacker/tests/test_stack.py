@@ -54,7 +54,7 @@ class TestStack(unittest.TestCase):
         bin = seg1.x[1] - seg1.x[0]
 
         stacksed = sed.stack(aggsed, bin, 'avg')
-        stack_sedarray = stacksed.toarray()
+        stack_sedarray = stacksed._toarray()
 
         numpy.testing.assert_array_almost_equal(stack_sedarray[1],aggsed.y[0],decimal=6)
         self.assertEqual(stacksed[3].y,aggsed.y[0][3])
@@ -62,13 +62,13 @@ class TestStack(unittest.TestCase):
         self.assertEqual(stacksed.counts[0], 6)
 
         stacksed = sed.stack(aggsed, bin, 'wavg')
-        stack_sedarray = stacksed.toarray()
+        stack_sedarray = stacksed._toarray()
 
         numpy.testing.assert_array_almost_equal(stack_sedarray[1],aggsed.y[0],decimal=6)
         self.assertEqual(stacksed[3].y,aggsed.y[0][3])
 
         stacksed = sed.stack(aggsed, bin, 'sum')
-        stack_sedarray = stacksed.toarray()
+        stack_sedarray = stacksed._toarray()
 
         numpy.testing.assert_array_almost_equal(stack_sedarray[1],aggsed.y[0]*6.,decimal=6)
         self.assertEqual(stacksed[3].y,aggsed.y[0][3]*6.)
@@ -90,7 +90,7 @@ class TestStack(unittest.TestCase):
 
         stacksed = sed.stack(aggsed, bin, 'wavg')
 
-        stack_sedarray = stacksed.toarray()
+        stack_sedarray = stacksed._toarray()
 
         self.assertEqual(stacksed[3].y,aggsed.y[0][3])
         self.assertEqual(stacksed[3].yerr,sqrt((aggsed.yerr[3][3]**2)*3))
@@ -112,7 +112,7 @@ class TestStack(unittest.TestCase):
         bin = seg1.x[1] - seg1.x[0]
 
         stacksed = sed.stack(aggsed, bin, 'avg')
-        stack_sedarray = stacksed.toarray()
+        stack_sedarray = stacksed._toarray()
 
         self.assertEqual(stacksed[3].y,aggsed.y[0][3])
         numpy.testing.assert_array_almost_equal(stack_sedarray[1],aggsed.y[0],decimal=6)
@@ -131,7 +131,7 @@ class TestStack(unittest.TestCase):
 
         bin = seg1.x[1] - seg1.x[0]
         stacksed = sed.stack(aggsed, bin, 'sum')
-        stack_sedarray = stacksed.toarray()
+        stack_sedarray = stacksed._toarray()
 
         numpy.testing.assert_array_almost_equal(stack_sedarray[1],aggsed.y[0]*6.,decimal=6)
         self.assertEqual(stacksed[3].y,aggsed.y[0][3]*6.)
@@ -206,7 +206,7 @@ class TestStack(unittest.TestCase):
             return yout, yerrarr, counts
 
         stacksed = sed.stack(aggsed, bin, my_average)
-        stack_sedarray = stacksed.toarray()
+        stack_sedarray = stacksed._toarray()
 
         self.assertEqual(stacksed.counts[0], 3)
         self.assertEqual(stacksed[3].y,aggsed.y[0][3])
