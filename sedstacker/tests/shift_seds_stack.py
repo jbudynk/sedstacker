@@ -61,11 +61,7 @@ stack_i = stack(norm_int_aggsed, 0.1, 'wavg', fill='remove', logbin=True)
 stack_p = stack(norm_point_aggsed, 0.1, 'wavg', fill='remove', logbin=True)
 stack_rf = stack(restframe_aggsed, 0.1, 'wavg', fill='remove', logbin=True)
 
-stack_arri = stack_i.toarray()
-stack_arrp = stack_p.toarray()
-stack_arrrf = stack_rf.toarray()
-
-plt.loglog(stack_arrrf[0],stack_arrrf[1],'ko',stack_arrp[0],stack_arrp[1],'go',stack_arri[0],stack_arri[1],'ro')
+plt.loglog(stack_rf.x,stack_rf.y,'ko',stack_p.x,stack_p.y,'go',stack_i.x,stack_i.y,'ro')
 plt.legend(('restframe','norm_at_point','norm_by_int'),fontsize='x-small', loc=2)
 plt.show()
 
