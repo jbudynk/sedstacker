@@ -108,7 +108,7 @@ class TestSegment(unittest.TestCase):
                    z = self._z)
 
         shifted_sed_cfeqTrue = sed.shift(0.1)
-        shifted_sed_cfeqTrue_arr = shifted_sed_cfeqTrue.toarray()
+        shifted_sed_cfeqTrue_arr = shifted_sed_cfeqTrue._toarray()
 
         # what sed.shift() should do
         spec_z0 = self._x*(1+0.1)/(1+sed.z)
@@ -122,7 +122,7 @@ class TestSegment(unittest.TestCase):
 
         # not correcting for dimming: correct_flux = False
         shifted_sed_cfeqFalse = sed.shift(0.1, correct_flux = False)
-        shifted_sed_cfeqFalse_arr = shifted_sed_cfeqFalse.toarray()
+        shifted_sed_cfeqFalse_arr = shifted_sed_cfeqFalse._toarray()
 
         numpy.testing.assert_array_equal(shifted_sed_cfeqFalse_arr[1], self._y)
         numpy.testing.assert_array_equal(shifted_sed_cfeqFalse_arr[0],shifted_sed_cfeqTrue_arr[0])
