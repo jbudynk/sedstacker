@@ -1260,14 +1260,30 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
     Args:
         aggrseds (iterable): an iterable of Seds, Spectra or AggregateSeds to stack. You cannot mix-and-match Seds and Spectra together in this iterable [unless they are contained in an AggregateSed]
         binsize (tuple): numerical value to bin the spectral axis by. The fluxes within each bin are combined according to the statistic argument. binsize is also the resolution of the stacked SED.
-
-    Kwargs:
         statistic (str, func): the statistic to use for combining the fluxes in each bin. The possible statistics are:
             'avg' (default) - averages the fluxes within each bin using numpy.average
-            'wavg' - computes the weighted average for the fluxes within each bin using the corresponding fluxerrors and numpy.average
+            'wavg' - computes the weighted average for the fluxes within each bin using the corresponding flux-errors and numpy.average. If a point has no error associated with it, then it is excluded from the calculation.
             'sum' - sums the fluxes within each bin.
-            func - a user-defined function for combining the fluxes in each bin.
+            func - a user-defined function for combining the fluxes in each bin. It must accept three arguments: the first and second arguments as arrays for the flux and flux-error values in a bin, and the third as a value for the number of flux values within the bin. It must return the combined flux and flux-error values, and the number of flux values within the bin.
+            Ex: ::
+                def my_weighted_avg(flux_bin, flux_error_bin, counts):
+                    weights = 1.0/flux_error_bin**2
+                    flux = numpy.ma.average(flux_bin, weights=weights)
+                    flux_error = numpy.sqrt((yerr_bin**2).sum())
+                    # If any NaN's exist in yerr_bin, then their corresponding fluxes
+                    # will not be taken into account for the weighted average.
+                    # The number of flux counts would be less than the number
+                    # of points in xbin.
+                    counts = len(numpy.where(yerr_bin.mask == False)[0])
+                    return yarr, outerr, counts
+            If your function does not reject any flux points, then you may just accept and pass ``counts`` without editing its value. ``stack()`` will take care of counting the number of flux values per bin. 
+            Ex: ::
+                def my_func(flux_array, flux_error_array, counts):
+                    flux_out = numpy.average(flux)
+                    flux_error_out = numpy.average(flux_error)
+                    return flux_out, flux_error_out, counts
 
+    Kwargs:
         fill (str): switch that decides what to do with bins that have no flux counts in them. There are two options:
             'fill' - the Y-values of unpopulated X-values are assigned numpy.nan
             'remove' - (Default) removes the unpopulated X-Y pair from the stacked SED
@@ -1284,6 +1300,27 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
     Returns:
         Sed object, with attribute 'count'. Attributes z, xunit and yunit are taken from the first Segment in the list.
             counts - number of flux values combined per binsize. plotting 'counts' against 'x' gives a histogram of the flux counts per spectral bin.
+
+
+    Ex:
+    
+    >>> # Stack a group of spectra with binsize 1.0 and average statistic
+    >>> stacked_spectra = stack(spectra, 1.0, 'avg')
+    >>> 
+    >>> # Stack a group of spectra with binsize 1.0, a user-defined statistic,
+    >>> # then smooth the stacked spectrum.
+    >>>
+    >>> # The user-defined statistic function must accept and return the combined flux,
+    >>> # flux-error, and the number of flux values that fall within the bin (counts)
+    >>> # in this order
+    >>> def my_combination_func(flux, flux_error, counts):
+            flux_out = numpy.average(flux)
+            flux_error_out = numpy.average(flux_error)
+            return flux_out, flux_error_out, counts
+    >>> smooth_stacked_spectra = stack(spectra, 1.0, my_combination_func, smooth=True, smooth_binsize=5)
+    >>>
+    >>> # Stack a group of SEDs with logarithmic binning and weighted average statistic
+    >>> stacked_seds = stack (seds, 0.1, 'wavg', logbin=True)
 
     Note: If logbin=True, the binsize should be entered in logspace. E.g. if 1,000 < x < 100,000 (or 3.0 < log10(x) < 5.0), and you wish to bin the spectral axis evenly in logspace, choosing binsize = 0.1 will produce 20 bins.
 
