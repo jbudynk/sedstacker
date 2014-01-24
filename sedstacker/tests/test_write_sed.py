@@ -39,7 +39,7 @@ class TestWriteSed(unittest.TestCase):
     def test_sed_write_with_counts(self):
 
         sed = Sed(x=self.x,y=self.y,yerr=self.yerr)
-        sed.counts = numpy.ones(numpy.array(sed.toarray()[0]).size, dtype=numpy.int_)
+        sed.counts = numpy.ones(numpy.array(sed._toarray()[0]).size, dtype=numpy.int_)
         filename = test_directory+'sed_counts.dat'
         sed.write(filename)
         self.assertEqual(os.path.exists(filename), True)
@@ -66,7 +66,7 @@ class TestWriteSed(unittest.TestCase):
 
     def test_aggsed_counts1(self):
         sed = Sed(x=self.x,y=self.y,yerr=self.yerr)
-        sed.counts = numpy.ones(numpy.array(sed.toarray()[0]).size, dtype=numpy.int_)
+        sed.counts = numpy.ones(numpy.array(sed._toarray()[0]).size, dtype=numpy.int_)
         spectrum = Spectrum(x=self.x, y=self.y, yerr=self.yerr)
 
         aggsed = AggregateSed([sed, spectrum])

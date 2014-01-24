@@ -172,10 +172,10 @@ class TestAggregateSed(unittest.TestCase):
         self.assertAlmostEqual(norm_aggsed.segments[0].norm_constant, control_norm_aggsed[0].norm_constant)
         self.assertAlmostEqual(norm_aggsed[1].norm_constant,1.4939309057e-08)
         numpy.testing.assert_array_almost_equal(control_norm_aggsed[0].y,norm_aggsed[0].y)
-        sed=norm_aggsed[1].toarray()
-        control_sed=control_norm_aggsed[1].toarray()
-        numpy.testing.assert_array_almost_equal(control_sed[1],sed[1])
-        numpy.testing.assert_array_almost_equal(control_sed[0],sed[0])
+        sed=norm_aggsed[1]
+        control_sed=control_norm_aggsed[1]
+        numpy.testing.assert_array_almost_equal(control_sed.y,sed.y)
+        numpy.testing.assert_array_almost_equal(control_sed.y,sed.y)
 
 
     def test_norm_at_point(self):
@@ -199,11 +199,11 @@ class TestAggregateSed(unittest.TestCase):
         aggsed = AggregateSed([segment1, segment2, segment3, segment4])
         norm_aggsed = aggsed.normalize_at_point(5000,1000)
 
-        sedarray = segment3.toarray()
+        sedarray = segment3._toarray()
         control_norm_aggsed_segment3 = sedarray[1]*0.2
 
         self.assertEqual(norm_aggsed[1][8].y, 1000)
-        sedarray = norm_aggsed[2].toarray()
+        sedarray = norm_aggsed[2]._toarray()
         numpy.testing.assert_array_almost_equal(sedarray[1], control_norm_aggsed_segment3)
         self.assertEqual(norm_aggsed[0].norm_constant, 0.2)
 
@@ -293,8 +293,8 @@ class TestAggregateSed(unittest.TestCase):
         self.assertEqual(len(aggsed.x[4]), len(segment3))
         
 
-#        sed2=norm_aggsed[1].toarray()
-#        sed3=norm_aggsed[2].toarray()
+#        sed2=norm_aggsed[1]._toarray()
+#        sed3=norm_aggsed[2]._toarray()
 #        plt.loglog(norm_aggsed[0].x,norm_aggsed[0].x,'r')
 #        plt.loglog(sed2[0],sed2[1],'ko')
 #        plt.loglog(sed3[0],sed3[1],'go')
