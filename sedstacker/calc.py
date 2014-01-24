@@ -81,7 +81,6 @@ def binup(y, x, xarr, statistic, binsize, fill, yerr, logbin = False):
 
 def wavg_bin(y_bin, yerr_bin, count):
 
-    #if len(yerr_bin) == count:
     weights = 1.0/yerr_bin**2
     yarr = numpy.ma.average(y_bin, weights=weights)
     outerr = numpy.sqrt((yerr_bin**2).sum())
@@ -91,11 +90,6 @@ def wavg_bin(y_bin, yerr_bin, count):
     # The number of flux counts would be less than the number
     # of points in xbin.
     count = len(numpy.where(yerr_bin.mask == False)[0])
-
-    #else:
-    #    yarr = numpy.mean(y_bin)
-    #    outerr = numpy.sqrt((yerr_bin**2).sum())
-    #    print 'len(yerr) does not match len(y). Computing average instead.'
     
     return yarr, outerr, count
 
