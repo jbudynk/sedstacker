@@ -24,15 +24,31 @@ logger.addHandler(hndlr)
 
 class PhotometricPoint(object):
     '''Represents a photometric point on a SED.
-    Attributes: x, y, yerr, xunit, yunit, units'''
 
-    def __init__(self, x=None, y=None, yerr=None, xunit='AA', yunit='erg/s/cm**2/AA'):
-        '''Returns a PhotometricPoint.
-        Attributes: x, y, yerr, xunit, yunit
+    To create a PhotometricPoint
 
         >>> point = PhotometricPoint(x=3823.0, y=1e-16, yerr=1e-18)
+        >>> print point
+        (3823 erg/s/cm**2/AA, 1e-16 +/- 1e-18 erg/s/cm**2/AA)
         >>> print point.x
-        3823.0'''
+        3823.0
+
+     Parameters
+     ----------
+     x : float or int
+         The spectral coordinate
+     y : float or int
+         The flux coordinate
+     yerr : float, int or None.
+         The corresponding error to *y*.
+     xunit : string or None
+         The unit of the spectral coordinate
+     yunit : string or None
+         The unit of the flux coordinate
+
+    '''
+
+    def __init__(self, x=None, y=None, yerr=None, xunit='AA', yunit='erg/s/cm**2/AA'):
                 
         self.x = x
         self.y = y
@@ -46,14 +62,6 @@ class PhotometricPoint(object):
 
 
     def __str__(self):
-        '''Prints a PhotometricPoint object.
-
-        >>> point = PhotometricPoint(x=3823.0, y=1e-16, yerr=1e-18)
-        >>> print point
-        (3823 erg/s/cm**2/AA, 1e-16 +/- 1e-18 erg/s/cm**2/AA)
-        >>> point2 = PhotometricPoint(x=3823.0, y=1e-16)
-        >>> print point2
-        (3823 erg/s/cm**2/AA, 1e-16 erg/s/cm**2/AA)'''
 
         if self.yerr != None:
             return '(%g %s, %g +/- %g %s)' (self.x, self.xunit, self.y, self.yerr, self.yunit)
@@ -84,28 +92,65 @@ class Segment(object):
 
 class Spectrum(Segment):
 
+    '''
+    A Spectrum is a spectrum in the astrophysical sense, meant to represent data taken from a spectrometer.
+
+    Attributes
+    ----------
+    x : array_like
+        The spectral coordinates. Default value is an empty list.
+    y : array_like
+        The flux values. Default value is an empty list.
+    yerr : array_like, float or int
+        The errors on the flux values. Default value is None.
+    xunit : string
+        The spectral coordinate units. Default value is 'AA'.
+    yunit : string
+        The flux coordinates. Default value is 'erg/s/cm**2/AA'.
+    z : float
+        The redshift of the Sed. Default value is None.
+
+    Examples
+    --------
+    Create a Spectrum object::
+
+        # Create dummy spectral data
+        import numpy
+        wavelength = numpy.arange(1200, 10000, 1)
+        flux = numpy.random.rand(wavelength.size)
+        flux_err = flux*0.01
+        
+        # Create a Spectrum of an object at redshift 0.32
+        from sedstacker.sed import Spectrum
+        spectrum = Spectrum(x=wavelength, y=flux, yerr=flux_err, xunit="Angstrom", yunit="None", z=0.32)
+        
+    View the Spectrum's data:
+
+        >>> # See the spectral, flux and flux-errors in tabular format
+        >>> print spectrum
+         x          y               yerr      
+        ---- --------------- -----------------
+        1200   0.17363701609   0.0017363701609
+        1201  0.829659253106  0.00829659253106
+        1202  0.721316944384  0.00721316944384
+        1203  0.340523430975  0.00340523430975
+        ...             ...               ...
+        9997  0.796084449833  0.00796084449833
+        9998  0.162571575683  0.00162571575683
+        9999 0.0378459454457 0.000378459454457
+        >>> 
+        >>> # Access the spectral axis
+        >>> spectrum.x
+        array([1200, 1201, 1202, ..., 9997, 9998, 9999])
+        >>> 
+        >>> # Check the redshift
+        >>> spectrum.z
+        0.32
+
+    '''
+
     def __init__(self, x=[], y=[], yerr=None, xunit='AA', yunit='erg/s/cm**2/AA', z=None):
-        '''
-        Creates and Returns a Spectrum.
-
-        Kwargs:
-            x (list): The spectral coordinates. Default value is None.
-            y (list): The flux values. Default value is None.
-            yerr (list, float, int): The errors on the flux values. Default value is None.
-            xunit (str): The spectral coordinate units. Default value is 'AA'.
-            yunit (str): The flux coordinates. Default value is 'erg/s/cm**2/AA'.
-            z (float): The redshift of the Sed. Default value is None.
-
-        Ex:
-
-        >>> # Create dummy spectral data
-        >>> wavelength = numpy.arange(1200, 10000, 1)
-        >>> flux = numpy.random.rand(wavelength.size())
-        >>> flux_err = flux*0.01
-        >>>
-        >>> # Create a Spectrum of an object at redshift 0.32
-        >>> spectrum = Spectrum(x=wavelength, y=flux, yerr=flux_err, xunit="Angstrom", yunit="None", z=0.32)
-        '''
+        # Returns a Spectrum.
 
         if len(x) != len(y):
             raise SegmentError('x and y must be of the same length.')
@@ -136,32 +181,41 @@ class Spectrum(Segment):
 
 
     def __str__(self):
+        # Prints out the spectral, flux, and flux-error data as an AstroPy Table
         data = Table([self.x, self.y, self.yerr], names=('x','y','yerr'), meta={'z':self.z})
         return data.__str__()
 
 
     def shift(self, z0, correct_flux=True):
-        '''
-        Redshifts the spectrum by means of cosmological expansion.
-        
-        Args:
-            z0 (float, int): Target redshift to shift the SED/spectrum to
-        
-        Kwargs:
-            correct_flux (bool): If True, the flux will be corrected for the
-            intrinsic dimming/brightening due to shifting the spectrum.
-            If False, only the spectral coordinates will be shifted; the flux
-            remains the same.
+        '''Redshifts the spectrum by means of cosmological expansion.
 
-        Returns:
+        Parameters
+        ----------
+        z0 : float, int
+            Target redshift to shift the SED/spectrum to
+        correct_flux : bool
+            If True, the flux will be corrected for the intrinsic dimming/brightening due to shifting the spectrum. If False, only the spectral coordinates will be shifted; the flux remains the same.
+
+        Returns
+        -------
+        shifted_spectrum : sedstacker.sed.Spectrum
             A new Spectrum object with the redshifted spectrum.
 
-        Ex:
+        Raises
+        ------
+        sedstacker.exceptions.InvalidRedshiftError
+            If attribute ``z`` or parameter ``z0`` is of non-numeric type or is negative.
+        sedstacker.exceptions.NoRedshiftError
+            If attribute ``z`` is ``None``
 
+        Examples
+        --------
         >>> # Shift the spectrum to rest frame
+        >>> 
         >>> rf_spectrum = spectrum.shift(0)
-        >>>
+        >>> 
         >>> # Shift the spectrum to rest frame, without correcting the flux
+        >>> 
         >>> rf_spectrum = spectrum.shift(0, correct_flux=False)
 
         '''
@@ -185,36 +239,55 @@ class Spectrum(Segment):
         '''Normalizes the spectrum such that at spectral coordinate x0,
         the flux of the spectrum is y0.
 
+        Notes
+        -----
         normalize_at_point() takes the average flux within a range of spectral values [x0-dx, x0+dx] centered on x0 as the observed flux at x0.
 
-        Args:
-            x0 (float, int): The spectral coordinate to normalize the SED at. x0 is in Angstroms.
-            y0 (float, int): The flux value to normalize the SED to.
+        Parameters
+        ----------
+        x0 : float, int
+            The spectral coordinate to normalize the SED at. x0 is in Angstroms.
+        y0 : float, int
+            The flux value to normalize the SED to.
+        dx : float, int
+            The number of spectral points to the left and right of x0, over which the average flux is measured. If no points fall within the range [x0-dx,x=+dx], then OutsideRangeError is raised, and the normalization is aborted.
+        norm_operator : int
+            operator used for scaling the spectrum to y0.
+                - 0 = *[default]* multiply the flux by the normalization constant
+                - 1 = add the normalization constant to the flux
+        correct_flux : bool
+            To correct for flux dimming/brightening due to redshift. Meant for SEDs that were shifted only by wavelength (i.e. the flux was not corrected for the intrinsic dimming/brightening due to redshift). If ``correct_flux = True``, then the flux is corrected so that the integrated flux at the current redshift is equal to that at the original redshift. Default value is False.
+        z0 : float, int
+            The original redshift of the source. Used only if ``correct_flux = True``.
 
-        Kwargs:
-            dx (float, int): The number of spectral points to the left and right of x0, over which the average flux is measured. If no points fall within the range [x0-dx,x=+dx], then OutsideRangeError is raised, and the normalization is aborted.
-            norm_operator (int): operator used for scaling the spectrum to y0.
-                0 = multiply the flux by the normalization constant
-                1 = add the normalization constant to the flux
-            correct_flux (bool): kwarg to correct for flux dimming/brightening due to redshift. Meant for SEDs that were shifted only by wavelength (i.e. the flux was not corrected for the intrinsic dimming/brightening due to redshift). If correct_flux = True, then the flux is corrected so that the integrated flux at the current redshift is equal to that at the original redshift.Default value is False.
-            z0 (float or int): The original redshift of the source. Used only if correct_flux = True.
+        Returns
+        -------
+        norm_spectrum : sedstacker.sed.Spectrum
+            A new Spectrum object of the normalized old Spectrum with attribute `norm_constant`.
 
-        Requires that the SED has at least 4 photometric points.
+        Raises
+        ------
+        sedstacker.exceptions.SegmentError
+            If the Spectrum has less than 4 points
 
-        Ex:
-
+        Examples
+        --------
         >>> # initializing dummy spectrum
+        >>> 
         >>> x = numpy.arange(3000, 9500, 0.5)
         >>> y = numpy.linspace(1, 1000, x.size)
         >>> yerr = y*0.01
         >>> spec = Spectrum(x=x,y=y,yerr=yerr,z=0.3)
         >>> 
-        >>> # normalize the spectrum "spec" to 1.0 erg/s/cm**2/AA at 3600.0 AA
+        >>> # normalize the spectrum "spec" to 1.0 at 3600.0
+        >>> 
         >>> norm_spec = spec.normalize_at_point(3600.0, 1.0, norm_operator=0, dx=70)
         >>> norm_spec.y
         >>> array([  0.01072261,   0.01154666,   0.01237072, ...,  10.72095858,
-                    10.72178263,  10.72260668])
-        
+                     10.72178263,  10.72260668])
+        >>> 
+        >>> # Check the normalization constant
+        >>> 
         >>> norm_spec.norm_constant
         0.010722606684739769
 
@@ -280,28 +353,44 @@ class Spectrum(Segment):
 
         Algorithm taken from astLib.astSED.normalise(); uses the Trapezoidal rule to estimate the integrated flux.
 
-        Kwargs:
-            minWavelength (float or 'min'): minimum wavelength of range over which to normalize Spectrum
-            maxWavelength (float or 'max'): maximum wavelength of range over which to normalize Spectrum
-            correct_flux (bool): switch used to correct for SEDs that were shifted to some redshift without taking into account flux brightening/dimming due to redshift
-            z0 (float or int): The original redshift of the source. Used if correct_flux = True.
+        Parameters
+        ----------
+        minWavelength : float or 'min'
+            Minimum wavelength of range over which to normalize Spectrum
+        maxWavelength : float or 'max'
+            Maximum wavelength of range over which to normalize Spectrum
+        correct_flux : bool
+            Switch used to correct for SEDs that were shifted to some redshift without taking into account flux brightening/dimming due to redshift
+        z0 : float or int, optional
+            The original redshift of the source. Used if correct_flux = True.
 
+        Raises
+        ------
+        sedstacker.exceptions.SegmentError
+            If the Spectrum object has less than 2 points between `minWavelength` and `maxWavelength`.')
+
+        Notes
+        -----
         The Spectrum must have at least 2 points between minWavelength and maxWavelength.
 
-        Ex:
-        
+        Examples
+        --------
         >>> # initializing dummy spectrum
+        >>> 
         >>> x = numpy.arange(3000, 9500, 0.5)
         >>> y = numpy.linspace(1, 1000, x.size)
         >>> yerr = y*0.01
         >>> spec = Spectrum(x=x,y=y,yerr=yerr,z=0.3)
         >>> 
         >>> # normalize the spectrum over its full range
+        >>> 
         >>> norm_spec = spec.normalize_by_int()
         >>> norm_spec.y
         >>> array([  3.07455874e-07,   3.31084493e-07,   3.54713112e-07, ...,
                      3.07408617e-04,   3.07432246e-04,   3.07455874e-04])
-        
+        >>> 
+        >>> # Check the normalization constant
+        >>> 
         >>> norm_spec.norm_constant
         3.0745587412510564e-07
 
@@ -342,30 +431,31 @@ class Spectrum(Segment):
         return norm_segment
 
 
-    def write(self, filename, xunit='AA', yunit='erg/s/cm**2/AA', fmt='ascii'):
+    def write(self, filename, fmt='ascii'):
         '''Write Spectrum to file.
 
-        Args:
-            filename (str): The name of the output file.
-       
-        Kwargs:
-            xunit (str): Default unit is Angstroms. Converts all the spectral data in Spectrum to these units.
-            yunit (str): Default unit is erg/s/cm**2/AA. Converts all the flux data in Spectrum to these units.
-            fmt (str): The format for the output file. The default file format is 'ascii'. For release 1.0, only ASCII files will be supported.
+        Parameters
+        ----------
+        filename : str
+            The name of the output file.
+        fmt : str
+            The format for the output file. The default file format is 'ascii'. For release 1.0, only ASCII files will be supported.
 
+        Examples
+        --------
+        >>> # Writing a Spectrum object with no flux errors
+        >>> # (i.e. spectrum.yerr = None)
+        >>> 
         >>> spectrum.write('my_data_directory/sed_data.txt')
-
-        ..code-block::
-            % more my_data_directory/sed_data.txt
-
-            x y
-            1941.8629     0.046853197
-            1942.5043     0.059397754
-            1943.1456     0.032893488
-            1943.7870     0.058623008
-            ...            ... 
-            10567.7890     0.046843890
-            10568.4571     0.059888754
+        >>> more my_data_directory/sed_data.txt
+        x y
+        1941.8629 0.046853197
+        1942.5043 0.059397754
+        1943.1456 0.032893488
+        1943.7870 0.058623008
+        ...            ... 
+        10567.7890 0.046843890
+        10568.4571 0.059888754
 
         '''
 
@@ -377,32 +467,69 @@ class Spectrum(Segment):
 
 
 class Sed(Segment, list):
-    '''Represents a photometric SED from one astronomical object or model.'''
+    '''Represents a photometric SED from one astronomical object or model.
+
+    Parameters
+    ----------
+    x : array_like
+        The spectral coordinates. Default value is an empty list, [].
+    y : array_like
+        The flux values. Default value is an empty list, [].
+    yerr : array_like of float or int; or None
+        The errors on the flux values. Default value is None.
+    xunit : array_like of str
+        The spectral coordinate units. Default value is ['AA'].
+    yunit : array_like of str
+        The flux coordinates. Default value is ['erg/s/cm**2/AA'].
+    z : float, int
+        The redshift of the Sed. Default value is None.
+    
+    Raises
+    ------
+    sedstacker.exceptions.SegmentError
+        If `x`, `y`, `yerr`, `xunit`, and/or `yunit` do not have the same length.
+    
+    Notes
+    -----
+    - x and y must have the same length.
+    - If all y-values share the same error, yerr can be a float or integer; each point (x,y) will be assigned that value as `yerr`. To  do this, set `yerr=[yerr_value]`.
+    - If all spectral coordinates `x` have the same units, then set `xunit=['unit_name']`.
+    - If all flux coordinates `y` have the same units, then set `yunit=['unit_name']`.
+    
+    Examples
+    --------
+    >>> sed = Sed(x=[1212.0, 3675.0, 4856.0], y=[1.456e-11, 3.490e-11, 5.421e-11], yerr=1.0e-13, z=0.02)
+    >>> sed.yerr
+    1.0e-13
+    1.0e-13
+    1.0e-13
+
+    Attributes
+    ----------
+    x : array_like
+        The spectral coordinates. Default value is an empty list, [].
+    y : array_like
+        The flux values. Default value is an empty list, [].
+    yerr : array_like of float or int; or None
+        The errors on the flux values. Default value is None.
+    xunit : array_like of str
+        The spectral coordinate units. Default value is ['AA'].
+    yunit : array_like of str
+        The flux coordinates. Default value is ['erg/s/cm**2/AA'].
+    z : float, int
+        The redshift of the Sed. Default value is None.
+    norm_constant : float
+        The normalization constant of the Sed. Default value is None.
+    counts : array of int
+        Array of the number of points combined in each bin through `sedstacker.sed.stack()`. Default value is None.
+
+    '''
 
     def __init__(self, x=[], y=[], yerr=None, xunit=['AA'], yunit=['erg/s/cm**2/AA'], z=None):
-        '''
-        Kwargs:
-            x (list): The spectral coordinates. Default value is an empty list, [].
-            y (list): The flux values. Default value is an empty list, [].
-            yerr (list; float, int): The errors on the flux values. Default value is None. If all y-values share the same error, yerr can be a float or integer.
-            xunit (list, str): The spectral coordinate units. Default value is ['AA'].
-            yunit (list, str): The flux coordinates. Default value is ['erg/s/cm**2/AA'].
-            z (float): The redshift of the Sed. Default value is None.
-
-        Raises:
-            SegmentError
-        
-        x and y must have the same length. If the kwarg of yerr is a single value 'YERR', then all (x,y) SED points will have error 'YERR'.
-
-        >>> sed = Sed(x=[1212.0, 3675.0, 4856.0], y=[1.456e-11, 3.490e-11, 5.421e-11], yerr=1.0e-13, z=0.02)
-        >>> sed.yerr
-        1.0e-13
-        1.0e-13
-        1.0e-13
-
-        '''
         
         self.z = z
+        #self.counts = None
+        #self.norm_constant = None
         
         if len(x) != len(y):
             raise SegmentError('x and y must be of the same length.')
@@ -532,27 +659,28 @@ class Sed(Segment, list):
 
 
     def shift(self, z0, correct_flux=True):
-        '''
-        Redshifts the spectrum by means of cosmological expansion.
+        '''Redshifts the spectrum by means of cosmological expansion.
         
-        Args:
-            z0 (float, int): Target redshift to shift the SED/spectrum to
-        
-        Kwargs:
-            correct_flux (bool): If True, the flux will be corrected for the
-            intrinsic dimming/brightening due to shifting the spectrum.
-            If False, only the spectral coordinates will be shifted; the flux
-            remains the same.
+        Parameters
+        ----------
+        z0 : float, int
+            Target redshift to shift the SED/spectrum to
+        correct_flux : bool
+            If True, the flux will be corrected for the intrinsic dimming/brightening due to shifting the spectrum. If False, only the spectral coordinates will be shifted; the flux remains the same.
 
-        Returns:
+        Returns
+        -------
+        sedstacker.sed.Sed
             A new Sed object with the redshifted spectrum.
 
-        Ex:
-
+        Examples
+        --------
         >>> # Shift the SED to rest frame
+        >>> 
         >>> rf_spectrum = sed.shift(0)
         >>>
         >>> # Shift the spectrum to rest frame, without correcting the flux
+        >>> 
         >>> rf_spectrum = sed.shift(0, correct_flux=False)
 
         '''
@@ -572,34 +700,31 @@ class Sed(Segment, list):
 
 
     def normalize_at_point(self, x0, y0, norm_operator=0, correct_flux=False, z0=None):
+        '''Normalizes the SED such that at spectral coordinate x0, the flux of the SED is y0.
 
-        '''Normalizes the SED such that at spectral coordinate x0,
-           the flux of the SED is y0.
+        Notes
+        -----
+        Uses nearest-neighbor interpolation (``scipy.interpolate.interp1d()`` with ``kind='nearest'``)
 
-        Uses nearest-neighbor interpolation.
+        Parameters
+        ----------
+        x0 : float or int
+            The spectral coordinate to normalize the SED at
+        y0 : float or int
+            The flux value to normalize the SED to
+        correct_flux : bool
+            To correct for flux dimming/brightening due to redshift. Meant for SEDs that were shifted only by wavelength (i.e. the flux was not corrected for the intrinsic dimming/brightening due to redshift). If ``correct_flux = True``, then the flux is corrected so that the integrated flux at the current redshift is equal to that at the original redshift.Default value is False.
+        norm_operator : int
+            Operator used for scaling the spectrum to y0.
+                - 0 = multiply the flux by the normalization constant
+                - 1 = add the normalization constant to the flux
+        z0 : float or int, optional
+            The original redshift of the source. Used only if ``correct_flux = True``.
 
-        Args:
-            x0 (float, int): The spectral coordinate to normalize the SED at
-            y0 (float, int): The flux value to normalize the SED to
-
-        Kwargs:
-            correct_flux (bool): kwarg to correct for flux dimming/brightening
-            due to redshift. Meant for SEDs that were shifted only by wavelength
-            (i.e. the flux was not corrected for the intrinsic
-            dimming/brightening due to redshift). If correct_flux = True, then
-            the flux is corrected so that the integrated flux at the current
-            redshift is equal to that at the original redshift.Default value is False.
-
-            norm_operator (int): operator used for scaling the spectrum to y0.
-            0 = multiply the flux by the normalization constant
-            1 = add the normalization constant to the flux
-
-            z0 (float or int): The original redshift of the source.
-            Used only if correct_flux = True.
-
-        Ex:
-
+        Examples
+        --------
         >>> # initializing dummy SED
+        >>> 
         >>> from numpy import logspace, linspace, log10
         >>> x = logspace(log10(3000), log10(70000), num=20)
         >>> y = linspace(1, 1000, num=x.size)*1e-5
@@ -607,6 +732,7 @@ class Sed(Segment, list):
         >>> sed = Sed(x=x,y=y,yerr=yerr,z=0.3)
         >>>
         >>> # normalize the SED at 6000.0 Angstroms and 1e-3 erg/s/cm**2/Angstrom
+        >>> 
         >>> norm_sed = sed.normalize_at_point(6000, 1e-3, norm_operator=0)
         >>>
         >>> norm_sed.y
@@ -618,6 +744,8 @@ class Sed(Segment, list):
                  3.73698630e-03,   3.98580324e-03,   4.23462017e-03,
                  4.48343711e-03,   4.73225405e-03])
         >>>
+        >>> # Checking the normalization constant
+        >>> 
         >>> norm_sed.norm_constant
         0.473225404732254
 
@@ -649,9 +777,10 @@ class Sed(Segment, list):
 
         norm_sed = Sed(x=spec, y=norm_flux, yerr=norm_fluxerr, xunit=xunit, yunit=yunit, z=self.z)
         setattr(norm_sed, 'norm_constant', norm_constant)
-
         # keep attributes of old sed
         _get_setattr(norm_sed,self)
+
+        #norm_sed.norm_constant = norm_constant
 
         return norm_sed
     
@@ -933,14 +1062,14 @@ class AggregateSed(list):
                 self.z.append(segment.z)
                 self.append(segment)
 
-# If I want to concentate all the spec and flux arrays:
-# [in the for loop: count += len(segment.x)]
-
-#        self.x.reshape(1,count)
-#        self.y.reshape(1,count)
-#        self.yerr.reshape(1,count)
-#        self.xunit.reshape(1,count)
-#        self.yunit.reshape(1,count)
+        # If I want to concentate all the spec and flux arrays:
+        # [in the for loop: count += len(segment.x)]
+        
+        #        self.x.reshape(1,count)
+        #        self.y.reshape(1,count)
+        #        self.yerr.reshape(1,count)
+        #        self.xunit.reshape(1,count)
+        #        self.yunit.reshape(1,count)
 
 
     def __str__(self):
@@ -1075,7 +1204,7 @@ class AggregateSed(list):
             minWavelength (float or 'min'): minimum wavelength of range over which to normalise SED
             maxWavelength (float or 'max'): maximum wavelength of range over which to normalise SED
             correct_flux (bool): switch used to correct for SEDs that were shifted to some redshift without taking into account flux brightening/dimming due to redshift
-            z0 (float or int): A list or array of the original redshifts of the sources. The redshifts must be in the same order as the Segments appear in the AggregateSed (i.e. assuming aggsed is an AggregateSed, z0[0] is the original redshift of aggsed[0], z0[1] is the original redshift of aggsed[1], etc.). Used only if correct_flux = True.
+            z0 (array_like): A list or array of the original redshifts of the sources. The redshifts must be in the same order as the Segments appear in the AggregateSed (i.e. assuming aggsed is an AggregateSed, z0[0] is the original redshift of aggsed[0], z0[1] is the original redshift of aggsed[1], etc.). Used only if correct_flux = True.
 
         Raises:
             OutisdeRangeError: If a Sed's or Spectrum's spectral range does not cover point x0, then the segment is excluded from the returned normalized AggregateSed.
@@ -1128,8 +1257,8 @@ class AggregateSed(list):
 
     def add_segment(self, segment):
         '''Add a segment to the AggregateSed.
-            Args:
-                segment: A Segment object.
+        Args:
+            segment: A Segment object.
 
         Ex:
 
@@ -1139,14 +1268,14 @@ class AggregateSed(list):
         7
         '''
 
-#        if isinstance(segments, types.ListType):
-#            for segment in segments:
-#                if isinstance(segment, Segment):
-#                    self.append(segment)
-#                    self.segments.append(segment)
-#            else:
-#                raise NotASegmentError
-#        else:
+        #        if isinstance(segments, types.ListType):
+        #            for segment in segments:
+        #                if isinstance(segment, Segment):
+        #                    self.append(segment)
+        #                    self.segments.append(segment)
+        #            else:
+        #                raise NotASegmentError
+        #        else:
         if isinstance(segment, Segment):
             self.append(segment)
             self.segments.append(segment)
@@ -1162,8 +1291,8 @@ class AggregateSed(list):
 
     def remove_segment(self, segment):
         '''Remove a segment from the AggregateSed.
-           Args:
-               segment: A Segment object.
+        Args:
+            segment: A Segment object.
 
         Ex:
 
@@ -1265,7 +1394,7 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
             'wavg' - computes the weighted average for the fluxes within each bin using the corresponding flux-errors and numpy.average. If a point has no error associated with it, then it is excluded from the calculation.
             'sum' - sums the fluxes within each bin.
             func - a user-defined function for combining the fluxes in each bin. It must accept three arguments: the first and second arguments as arrays for the flux and flux-error values in a bin, and the third as a value for the number of flux values within the bin. It must return the combined flux and flux-error values, and the number of flux values within the bin.
-            Ex: ::
+            Ex::
                 def my_weighted_avg(flux_bin, flux_error_bin, counts):
                     weights = 1.0/flux_error_bin**2
                     flux = numpy.ma.average(flux_bin, weights=weights)
@@ -1277,7 +1406,7 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
                     counts = len(numpy.where(yerr_bin.mask == False)[0])
                     return yarr, outerr, counts
             If your function does not reject any flux points, then you may just accept and pass ``counts`` without editing its value. ``stack()`` will take care of counting the number of flux values per bin. 
-            Ex: ::
+            Ex::
                 def my_func(flux_array, flux_error_array, counts):
                     flux_out = numpy.average(flux)
                     flux_error_out = numpy.average(flux_error)
