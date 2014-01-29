@@ -1,27 +1,23 @@
-.. complexity documentation master file, created by
-   sphinx-quickstart on Tue Jul  9 22:26:36 2013.
+.. sedstacker documentation master file, created by
+   sphinx-quickstart on Tue Jan 28 12:00:35 2014.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-.. include:: ../README.rst
+Welcome to sedstacker's documentation!
+======================================
 
 Contents:
-=========
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
 
-   installation
-   usage
-   contributing
-   authors
-   history
+   sedstacker
 
-Feedback
-========
 
-If you have any suggestions or questions about **sedstacker** feel free to email me
-at jbudynkiewicz@cfa.harvard.edu.
+Indices and tables
+==================
 
-If you encounter any errors or problems with **sedstacker**, please let me know!
-Open an Issue at the GitHub http://github.com/jbudynk/sedstacker main repository.
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
+
