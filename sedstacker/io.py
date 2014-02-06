@@ -87,7 +87,7 @@ def load_sed(filename, xunit='AA', yunit='erg/s/cm**2/AA', sed_type='spectrum', 
     '''
 
     # Check that the data file format is an acceptable file format
-    if not check_file_format(fmt):
+    if not _check_file_format(fmt):
         raise NonSupportedFileFormatError(fmt)
 
     # Read data from file into a dictionary with three key-value pairs:
