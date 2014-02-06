@@ -19,13 +19,13 @@ class TestLoadCat(unittest.TestCase):
         formats = ('ascii',)
 	fmt = 'ascii'
 	test_result = fmt in formats
-	result = io.check_file_format('ascii')
+	result = io._check_file_format('ascii')
 	self.failUnless(result == test_result)
 
     def test_check_file_format_False(self):
         formats = ('ascii',)
         fmt = 'fits'
-        result = io.check_file_format(fmt)
+        result = io._check_file_format(fmt)
         self.failIf(result == True)
 
 
