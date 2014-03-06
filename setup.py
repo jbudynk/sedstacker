@@ -21,7 +21,7 @@ def read(*filenames, **kwargs):
             buf.append(f.read())
     return sep.join(buf)
 
-long_description = read('README.txt', 'CHANGES.txt')
+long_description = read('README.md', 'HISTORY.rst')
 
 class PyTest(TestCommand):
     def finalize_options(self):
@@ -37,7 +37,6 @@ class PyTest(TestCommand):
 setup(
     name='sedstacker',
     version=sedstacker.__version__,
-    url='http://github.com/jbudynk/sedstacker/',
     license='GNU General Public License',
     author='Jamie Budynkiewicz',
     tests_require=['pytest'],
