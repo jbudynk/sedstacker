@@ -1521,7 +1521,7 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
 
     Parameters
     ----------
-    aggrseds : sedstacker.sed.AggregateSed
+    aggrseds : array-like of sedstacker.sed.Segment; sedstacker.sed.AggregateSed
         The AggregateSeds to stack. May be an iterable of AggregateSeds.
     binsize : float or int
         numerical value to bin the spectral axis by. The fluxes within each bin are combined according to the statistic argument. binsize is also the resolution of the stacked SED.
@@ -1616,14 +1616,18 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
     # making "giant"/global arrays
     giant_spec = numpy.array([])
     giant_flux = numpy.array([])
-    giant_fluxerr = numpy.array([]) 
-    for xarrs in aggrseds.x:
-        giant_spec = numpy.append(giant_spec, xarrs)
-    for yarrs in aggrseds.y:
-        giant_flux = numpy.append(giant_flux, yarrs)
-    for yerrs in aggrseds.yerr:
-        giant_fluxerr = numpy.append(giant_fluxerr, yerrs)
+    giant_fluxerr = numpy.array([])
 
+    for i, sed in enumerate(aggrseds):
+        try:
+            giant_spec = numpy.append(giant_spec, sed.x)
+            giant_flux = numpy.append(giant_flux, sed.y)
+            giant_fluxerr = numpy.append(giant_fluxerr, sed.yerr)
+        except AttributeError:
+            giant_spec = numpy.append(giant_spec, sed[i].x)
+            giant_flux = numpy.append(giant_flux, sed[i].y)
+            giant_fluxerr = numpy.append(giant_fluxerr, sed[i].yerr)
+        
     xarr = calc.big_spec(giant_spec, binsize, logbin)
 
     yarr, xarr, yerrarr, counts = calc.binup(giant_flux, giant_spec, xarr,
@@ -1632,9 +1636,14 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
 
     # take first entry of xunit, yunit and z from the aggregate SED
     # for the same attributes in the stacked SED
-    xunit = [aggrseds.xunit[0]]
-    yunit = [aggrseds.yunit[0]]
-    z = aggrseds.z[0]
+    xunit = [aggrseds[0].xunit[0]]*xarr.size
+    yunit = [aggrseds[0].yunit[0]]*xarr.size
+    try:
+        z = aggrseds[0][0].z
+    except TypeError:
+        z = aggrseds[0].z
+    except AttributeError:
+        z = aggrseds[0].z
 
     # for smoothing.
     # what to do with y-errors?
