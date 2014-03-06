@@ -136,6 +136,46 @@ class TestStack(unittest.TestCase):
         numpy.testing.assert_array_almost_equal(stack_sedarray[1],aggsed.y[0]*6.,decimal=6)
         self.assertEqual(stacksed[3].y,aggsed.y[0][3]*6.)
 
+        self.assertEqual(len(stacksed.xunit), len(stacksed.x))
+
+
+    def test_stack_segments(self):
+
+        seg1 = sed.Sed(x=self.x,y=self.y,yerr=self.yerr,z=self.z)
+        seg2 = sed.Sed(x=self.x,y=self.y,yerr=self.yerr,z=self.z)
+        seg3 = sed.Sed(x=self.x,y=self.y,yerr=self.yerr,z=self.z)
+        seg4 = sed.Spectrum(x=self.x,y=self.y,yerr=self.yerr,z=self.z)
+        seg5 = sed.Spectrum(x=self.x,y=self.y,yerr=self.yerr,z=self.z)
+        seg6 = sed.Spectrum(x=self.x,y=self.y,yerr=self.yerr,z=self.z)
+
+        bin = seg1.x[1] - seg1.x[0]
+
+        aggsed = [seg1,seg2,seg3,seg4,seg5,seg6]
+        stacked_seds = sed.stack(aggsed, bin, 'wavg')
+
+        self.assertEqual(stacked_seds.y[3],aggsed[0].y[3])
+        self.assertEqual(stacked_seds.yerr[3],sqrt((aggsed[3].yerr[3]**2)*6))
+        numpy.testing.assert_array_almost_equal(stacked_seds.y[0],aggsed[0].y[0],decimal=6)
+        self.assertEqual(stacked_seds.counts[0], 6)
+
+
+    def test_stack_list_of_aggregateseds(self):
+
+        seg1 = sed.Sed(x=self.x,y=self.y,yerr=self.yerr,z=self.z)
+        seg2 = sed.Sed(x=self.x,y=self.y,yerr=self.yerr,z=self.z)
+        seg3 = sed.Sed(x=self.x,y=self.y,yerr=self.yerr,z=self.z)
+        seg4 = sed.Spectrum(x=self.x,y=self.y,yerr=self.yerr,z=self.z)
+        seg5 = sed.Spectrum(x=self.x,y=self.y,yerr=self.yerr,z=self.z)
+        seg6 = sed.Spectrum(x=self.x,y=self.y,yerr=self.yerr,z=self.z)
+
+        bin = seg1.x[1] - seg1.x[0]
+
+        aggsed = sed.AggregateSed([seg1,seg2,seg3,seg4,seg5,seg6])
+        stacked_seds = sed.stack([aggsed,aggsed], bin, 'avg')
+
+        self.assertEqual(stacked_seds.y[3],aggsed[0].y[3])
+        numpy.testing.assert_array_almost_equal(stacked_seds.y[0],aggsed[0].y[0],decimal=6)
+        self.assertEqual(stacked_seds.counts[0], 12)
 
     def test_stack_seds(self):
 
