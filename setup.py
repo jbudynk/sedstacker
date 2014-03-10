@@ -21,7 +21,7 @@ def read(*filenames, **kwargs):
             buf.append(f.read())
     return sep.join(buf)
 
-long_description = read('README.txt', 'CHANGES.txt')
+long_description = read('README.md', 'HISTORY.rst')
 
 class PyTest(TestCommand):
     def finalize_options(self):
@@ -37,7 +37,6 @@ class PyTest(TestCommand):
 setup(
     name='sedstacker',
     version=sedstacker.__version__,
-    url='http://github.com/jbudynk/sedstacker/',
     license='GNU General Public License',
     author='Jamie Budynkiewicz',
     tests_require=['pytest'],
@@ -53,15 +52,13 @@ setup(
     test_suite='sedstacker.tests',
     classifiers = [
         'Development Status :: 2 - Pre-Alpha',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: MIT License',
         'Natural Language :: English',
-        'Programming Language :: Python :: 2',
+#        'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.3',
-        'Programming Language :: Python :: Implementation :: PyPy',
+#        'Programming Language :: Python :: 3',
+#        'Programming Language :: Python :: 3.3',
+#        'Programming Language :: Python :: Implementation :: PyPy',
         'Programming Language :: Python',
         'Development Status :: 4 - Beta',
         'Natural Language :: English',
