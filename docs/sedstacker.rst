@@ -1,59 +1,22 @@
-sedstacker Package
+sedstacker package
 ==================
 
-:mod:`sedstacker` Package
--------------------------
+Submodules
+----------
 
-.. automodule:: sedstacker.__init__
+.. toctree::
+
+   sedstacker.calc
+   sedstacker.config
+   Exceptions (sedstacker.exceptions) <sedstacker.exceptions>
+   File I/O (sedstacker.io) <sedstacker.io>
+   Creating, analyzing, handling and stacking SED data (sedstacker.sed) <sedstacker.sed>
+   sedstacker.version
+
+Module contents
+---------------
+
+.. automodule:: sedstacker
     :members:
     :undoc-members:
     :show-inheritance:
-
-:mod:`calc` Module
-------------------
-
-.. automodule:: sedstacker.calc
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-:mod:`config` Module
---------------------
-
-.. automodule:: sedstacker.config
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-:mod:`exceptions` Module
-------------------------
-
-.. automodule:: sedstacker.exceptions
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-:mod:`io` Module
-----------------
-
-.. automodule:: sedstacker.io
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-:mod:`sed` Module
------------------
-
-.. automodule:: sedstacker.sed
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-:mod:`version` Module
----------------------
-
-.. automodule:: sedstacker.version
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
