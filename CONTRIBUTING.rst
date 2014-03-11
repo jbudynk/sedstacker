@@ -84,7 +84,7 @@ To get tox, just pip install it.
 
 6. Submit a pull request through the GitHub website.
 
-.. _Fork: https://github.com/Nekroze/sedstacker/fork
+.. _Fork: https://github.com/jbudynk/sedstacker/fork
 
 Pull Request Guidelines
 -----------------------
