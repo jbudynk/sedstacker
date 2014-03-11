@@ -65,7 +65,7 @@ release = sedstacker.__version__
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build','scipy-sphinx-theme']
+exclude_patterns = ['*config*','*version*','*calc*','*scipy*']
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 #default_role = None
@@ -166,7 +166,6 @@ html_static_path = ['_static']
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'sedstackerdoc'
-
 
 # -- Options for LaTeX output --------------------------------------------------
 
