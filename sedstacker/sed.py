@@ -91,23 +91,22 @@ class Segment(object):
 
 
 class Spectrum(Segment):
-
     '''
     A Spectrum is a spectrum in the astrophysical sense, meant to represent data taken from a spectrometer.
 
-    Attributes
+    Parameters
     ----------
     x : array_like
-        The spectral coordinates. Default value is an empty list.
+        The spectral coordinates. Default value is an empty list, [].
     y : array_like
-        The flux values. Default value is an empty list.
-    yerr : array_like, float or int
+        The flux values. Default value is an empty list, [].
+    yerr : array_like of float or int; or None
         The errors on the flux values. Default value is None.
-    xunit : string
-        The spectral coordinate units. Default value is 'AA'.
-    yunit : string
-        The flux coordinates. Default value is 'erg/s/cm**2/AA'.
-    z : float
+    xunit : array_like of str
+        The spectral coordinate units. Default value is ['AA'].
+    yunit : array_like of str
+        The flux coordinates. Default value is ['erg/s/cm**2/AA'].
+    z : float, int
         The redshift of the Sed. Default value is None.
 
     Examples
@@ -146,6 +145,21 @@ class Spectrum(Segment):
         >>> # Check the redshift
         >>> spectrum.z
         0.32
+
+    Attributes
+    ----------
+    x : array_like
+        The spectral coordinates. Default value is an empty list.
+    y : array_like
+        The flux values. Default value is an empty list.
+    yerr : array_like, float or int
+        The errors on the flux values. Default value is None.
+    xunit : string
+        The spectral coordinate units. Default value is 'AA'.
+    yunit : string
+        The flux coordinates. Default value is 'erg/s/cm**2/AA'.
+    z : float
+        The redshift of the Sed. Default value is None.
 
     '''
 
