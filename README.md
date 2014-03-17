@@ -8,7 +8,15 @@ A Python toolkit for statistically combining multiple spectral energy distributi
 Documentation
 -------------
 
-Please view the Iris user documentation at [cxc.harvard.edu/iris/].
+Website: readthedocs.org
+
+Build the docs on your machine:
+
+Clone the git repository, `cd` into `docs`, then run
+
+   $: make html
+
+The HTML files are in `_build/html`.
 
 Installation
 ------------
@@ -172,6 +180,7 @@ An AggregateSed is simply a list of SEDs and Spectra. Information
 about the individual SEDs can be accessed as one would access data to
 a Python list:
 
+    >>> print high_lum_low_z_seds[0]
 
 
 
