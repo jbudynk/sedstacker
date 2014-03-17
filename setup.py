@@ -23,15 +23,15 @@ def read(*filenames, **kwargs):
 
 long_description = read('README.md', 'HISTORY.rst')
 
-class PyTest(TestCommand):
+class Tox(TestCommand):
     def finalize_options(self):
         TestCommand.finalize_options(self)
         self.test_args = []
         self.test_suite = True
 
     def run_tests(self):
-        import pytest
-        errcode = pytest.main(self.test_args)
+        import tox
+        errcode = tox.cmdline(self.test_args)
         sys.exit(errcode)
 
 setup(
@@ -39,9 +39,14 @@ setup(
     version=sedstacker.__version__,
     license='GNU General Public License',
     author='Jamie Budynkiewicz',
-    tests_require=['pytest'],
-    install_requires=[],
-    cmdclass={'test': PyTest},
+    install_requires=['astropy>=0.3',
+                      'numpy>=1.7.1',
+                      'scipy>=0.13.0',
+                      'numpydoc>=0.4',
+                      'wheel>=0.22'
+                      ],
+    tests_require=['tox','astlib==0.7','numpy==1.7.1'],
+    cmdclass={'test': Tox},
     author_email='jbudynkiewicz@cfa.harvard.edu',
     url='https://github.com/jbudynk/sedstacker',
     description='Astronomical toolkit for statistically combining spectral energy distributions',
@@ -53,12 +58,12 @@ setup(
     classifiers = [
         'Development Status :: 2 - Pre-Alpha',
         'Natural Language :: English',
-#        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
-#        'Programming Language :: Python :: 3',
-#        'Programming Language :: Python :: 3.3',
-#        'Programming Language :: Python :: Implementation :: PyPy',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: Implementation :: PyPy',
         'Programming Language :: Python',
         'Development Status :: 4 - Beta',
         'Natural Language :: English',
