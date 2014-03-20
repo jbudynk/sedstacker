@@ -104,8 +104,8 @@ class OutsideRangeError(Exception):
 
     """
 
-    msg = ('The Segment does not fall within the specified spectral range for '+ 
-           'normalization')
+    msg = ('The Segment does not fall within the specified spectral range '+
+           'for normalization')
 
     def __init__(self, msg=msg):
         Exception.__init__(self, msg)
