@@ -1,4 +1,3 @@
-import copy
 import logging
 import numpy
 import os.path
@@ -8,11 +7,11 @@ from bisect import bisect_left, bisect_right
 
 from astropy.io import ascii
 from astropy.table import Table
-from scipy import interpolate, integrate
 
 from sedstacker import calc
 from sedstacker.config import NUMERIC_TYPES
 from sedstacker.exceptions import NoRedshiftError, InvalidRedshiftError, SegmentError, OutsideRangeError, NotASegmentError, PreExistingFileError
+import time
 
 
 logger=logging.getLogger(__name__)
@@ -45,6 +44,11 @@ class PhotometricPoint(object):
          The unit of the spectral coordinate
      yunit : string or None
          The unit of the flux coordinate
+
+     Attributes
+     ----------
+     mask : bool
+         If True, mask the point. Default is False.
 
     '''
 
@@ -609,7 +613,7 @@ class Sed(Segment, list):
     def y(self):
         return self._toarray()[1]
     @y.setter
-    def y(self):
+    def y(self, val):
         assert len(val) == len(self), 'x array and Sed object must have same length.'
         for i, point in enumerate(self):
             point.y = val[i]
@@ -624,7 +628,7 @@ class Sed(Segment, list):
     def yerr(self, val):
         #Sets flux-error, yerr. If val is a single number, all fluxerrors are assigned val. If val is an iterable, then each point is assigned the consecutive values in val.
         try:
-            assert len(val) == len(self), 'yerr array and Sed object must have same length.'
+            assert len(val) == len(self), 'yerr array and y must have same length.'
             for point, i in enumerate(self):
                 assert type(val[i]) in NUMERIC_TYPES, 'yerr must be of numeric type'
                 point.yerr = val[i]
@@ -744,7 +748,7 @@ class Sed(Segment, list):
 
         Notes
         -----
-        Uses nearest-neighbor interpolation (``scipy.interpolate.interp1d()`` with ``kind='nearest'``)
+        Uses nearest-neighbor interpolation to calculate the normalization constant.
 
         Parameters
         ----------
@@ -811,8 +815,8 @@ class Sed(Segment, list):
             fluxz = correct_flux_(spec, flux, self.z, z0)
             flux = fluxz  
 
-        interp_self = interpolate.interp1d(spec, flux, kind='nearest')
-        flux_at_x0 = interp_self(x0)
+        interp_self = calc.fast_nearest_interp([x0], spec, flux)
+        flux_at_x0 = numpy.float_(interp_self)
 
         if norm_operator == 0:
             norm_constant = y0 / flux_at_x0
@@ -917,7 +921,7 @@ class Sed(Segment, list):
             flux = fluxz
 
         sedFluxSlice = flux[totalCut]
-        norm_constant = 1.0/integrate.trapz(abs(sedFluxSlice), sedWavelengthSlice)
+        norm_constant = 1.0/numpy.trapz(abs(sedFluxSlice), sedWavelengthSlice)
         norm_flux = numpy.array(flux*norm_constant)
         norm_fluxerr = numpy.array(fluxerr*norm_constant if fluxerr is not None else None)
         norm_segment = Sed(x=spec, y=norm_flux, yerr=norm_fluxerr,
@@ -1082,11 +1086,11 @@ class Sed(Segment, list):
 
         '''
         
-        spec = numpy.array([p.x for p in self])
-        flux = numpy.array([p.y for p in self])
-        fluxerr = numpy.array([p.yerr for p in self])
-        xunit = numpy.array([p.xunit for p in self])
-        yunit = numpy.array([p.yunit for p in self])
+        spec = numpy.array([p.x for p in self if p.mask == False])
+        flux = numpy.array([p.y for p in self if p.mask == False])
+        fluxerr = numpy.array([p.yerr for p in self if p.mask == False])
+        xunit = numpy.array([p.xunit for p in self if p.mask == False])
+        yunit = numpy.array([p.yunit for p in self if p.mask == False])
 
         sedarray = spec, flux, fluxerr, xunit, yunit
 
@@ -1641,13 +1645,14 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
             giant_spec = numpy.append(giant_spec, sed[i].x)
             giant_flux = numpy.append(giant_flux, sed[i].y)
             giant_fluxerr = numpy.append(giant_fluxerr, sed[i].yerr)
-        
-    xarr = calc.big_spec(giant_spec, binsize, logbin)
 
+    xarr = calc.big_spec(giant_spec, binsize, logbin)
+    start = time.clock()
     yarr, xarr, yerrarr, counts = calc.binup(giant_flux, giant_spec, xarr,
                                              statistic, binsize, fill,
                                              giant_fluxerr, logbin=logbin)
-
+    end = time.clock()
+    # print end - start, 'stack() time'
     # take first entry of xunit, yunit and z from the aggregate SED
     # for the same attributes in the stacked SED
     xunit = [aggrseds[0].xunit[0]]*xarr.size
@@ -1668,6 +1673,8 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
                       xunit=xunit, yunit=yunit, z=z)
 
     setattr(stacked_sed, 'counts', counts)
+
+
 
     return stacked_sed
 
