@@ -1,7 +1,2 @@
 wheel>=0.22
 astropy>=0.3
-numpy>=1.7.1
-sphinx>=1.2.1
-numpydoc>=0.4
-astlib>=0.7
-scipy>=0.13.0
