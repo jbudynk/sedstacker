@@ -549,7 +549,6 @@ def _read_ascii(filename):
     # set the fluxerr to None
     except TypeError:
         d['y_err'] = numpy.array([None]*d['x'].size)
-        print d['y_err']
 
     return dict(x=d['x'], y=d['y'], y_err=d['y_err'], counts=d['counts'])
 
