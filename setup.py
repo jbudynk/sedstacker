@@ -40,12 +40,9 @@ setup(
     license='GNU General Public License',
     author='Jamie Budynkiewicz',
     install_requires=['astropy>=0.3',
-                      'numpy>=1.7.1',
-                      'scipy>=0.13.0',
-                      'numpydoc>=0.4',
                       'wheel>=0.22'
                       ],
-    tests_require=['tox','astlib==0.7','numpy==1.7.1'],
+    tests_require=['tox'],
     cmdclass={'test': Tox},
     author_email='jbudynkiewicz@cfa.harvard.edu',
     url='https://github.com/jbudynk/sedstacker',
@@ -71,8 +68,5 @@ setup(
         'License :: OSI Approved :: GNU GPL v3',
         'Operating System :: OS Independent',
         'Topic :: Software Development :: Libraries :: Python Modules',
-        ],
-    extras_require={
-        'testing': ['pytest'],
-    }
+        ]
 )
