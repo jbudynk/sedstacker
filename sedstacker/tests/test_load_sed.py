@@ -4,10 +4,11 @@ import os
 import os.path
 import sedstacker
 from sedstacker import io
+from numpy import array, nan, testing
 
 test_directory = os.path.dirname(sedstacker.__file__)+"/tests/resources/test_load_sed/"
 
-class TestSedFileInput(unittest.TestCase):
+class TestLoadSed(unittest.TestCase):
     '''
     Test the SED File reader functions, load_sed, check_fmt, and _read_ascii.
     
@@ -37,9 +38,10 @@ class TestSedFileInput(unittest.TestCase):
 
     rootdir = "/data/vao/staff/jbudynk/python_project/sedstacker/tests/test_load_sed/"
 
-    def testThreeColsWithNames(self):
+    def test_load_spectrum_three_cols(self):
 
-        spectrum = io.load_sed(test_directory+'case1.dat', sed_type='spectrum')
+        spectrum = io.load_sed(test_directory+'case1.dat',
+                               sed_type='spectrum')
 
         self.assertEqual(spectrum.x[0], 814.020019531)
         self.assertEqual(spectrum.y[3], -1.21521716301e-14)
@@ -50,10 +52,40 @@ class TestSedFileInput(unittest.TestCase):
         self.assertEqual(sed[3].y, -1.21521716301e-14)
 
     
-    def testThreeColsWithoutNames(self):
+    def test_load_spectrum_three_cols_no_col_names(self):
         
-        spectrum = io.load_sed(test_directory+'case2_3columnsNoNames.dat', sed_type='spectrum')
+        spectrum = io.load_sed(test_directory+'case2_3columnsNoNames.dat',
+                               sed_type='spectrum')
+
+        #testing.assert_array_equal(sed.x, control_x)
+        #testing.assert_array_equal(sed.y, control_y)
+        #testing.assert_array_equal(sed.yerr, control_yerr)
+        #testing.assert_array_equal(sed.xunit, control_xunit)
+        #testing.assert_array_equal(sed.yunit, control_yunit)
+
         pass
+
+    def test_load_sed_no_yerr_no_col_names(self):
+
+        sed = io.load_sed(test_directory+'case4_2columnsNoNames.dat',
+                          sed_type='sed')
+
+        control_x = array([814.020019531, 814.538879394, 815.057678223,
+                           815.576538086, 816.095336914])
+        control_y = array([-1.21828545516e-14, -1.21726630511e-14,
+                            -1.21624715507e-14, -1.21521716301e-14,
+                            -1.21419801297e-14])
+        control_yerr = array([nan, nan, nan, nan, nan])
+        control_xunit = array(['AA','AA','AA','AA','AA'])
+        control_yunit = array(['erg/s/cm**2/AA','erg/s/cm**2/AA',
+                               'erg/s/cm**2/AA','erg/s/cm**2/AA',
+                               'erg/s/cm**2/AA'])
+        
+        testing.assert_array_almost_equal(sed.x, control_x)
+        testing.assert_array_almost_equal(sed.y, control_y)
+        testing.assert_array_almost_equal(sed.yerr, control_yerr)
+        testing.assert_array_equal(sed.xunit, control_xunit)
+        testing.assert_array_equal(sed.yunit, control_yunit)
 
 
 if __name__ == '__main__':
