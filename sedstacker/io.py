@@ -19,11 +19,11 @@ from sedstacker.config import NONE_VALS, NUMERIC_TYPES
 
 
 # Logging handler
-_logger = logging.getLogger(__name__)
-_formatter = logging.Formatter('%(levelname)s:%(message)s')
-_hndlr = logging.StreamHandler()
-_hndlr.setFormatter(_formatter)
-_logger.addHandler(_hndlr)
+logger = logging.getLogger(__name__)
+formatter = logging.Formatter('%(levelname)s:%(message)s')
+hndlr = logging.StreamHandler()
+hndlr.setFormatter(formatter)
+logger.addHandler(hndlr)
 
 # Default units to load data in
 _YUNIT = 'erg/s/cm**2/AA'
@@ -221,7 +221,7 @@ def load_dir(directory, xunit=_XUNIT, yunit=_YUNIT, sed_type='spectrum', fmt='as
 
     spectra = []
     for files in direc:
-        spec.append(load_sed(directory+files, 
+        spectra.append(load_sed(directory+files, 
                              xunit=xunit, yunit=yunit, sed_type=sed_type, 
                              fmt=fmt)
                     )
