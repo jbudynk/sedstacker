@@ -72,7 +72,7 @@ class TestSegment(unittest.TestCase):
         
         norm_spectrum = spectrum.normalize_at_point(5000.0, 1e-13)
 
-        self.assertAlmostEqual(norm_spectrum.norm_constant, 0.034145, delta=0.000001)
+        assert abs(norm_spectrum.norm_constant - 0.034145) < 0.00001
         self.assertEqual(len(norm_spectrum.yerr), len(norm_spectrum.x))
         self.assert_(numpy.isnan(norm_spectrum.yerr[1]))
 
@@ -145,7 +145,7 @@ class TestSegment(unittest.TestCase):
         const = 1.4673584905660368e-08/3.5350000000000254e-08
 
         self.assertEqual(shifted_spectrum_cfeqTrue.z, 0.1)
-        self.assertAlmostEqual(shifted_spectrum_cfeqTrue.x[9], 1247.8983747, delta=1e-6)
+        self.assertAlmostEqual(shifted_spectrum_cfeqTrue.x[9], 1247.8983747) #, delta=1e-6)
         numpy.testing.assert_array_almost_equal(shifted_spectrum_cfeqTrue.y, spectrum.y*const)
         numpy.testing.assert_array_equal(shifted_spectrum_cfeqFalse.x, shifted_spectrum_cfeqTrue.x)
         numpy.testing.assert_array_equal(shifted_spectrum_cfeqFalse.y, spectrum.y)

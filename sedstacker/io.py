@@ -7,20 +7,39 @@ from astropy.io import ascii
 from astropy.io.ascii.core import InconsistentTableError
 from astropy.table import Table
 
-from sedstacker.sed import PhotometricPoint, Sed, Spectrum, AggregateSed, create_from_points
-from sedstacker.exceptions import NonSupportedFileFormatError, NonStandardColumnNamesError, PreExistingFileError
-from sedstacker.config import NONE_VALS
+from sedstacker.sed import (
+    PhotometricPoint, Sed, Spectrum, AggregateSed, create_from_points
+    )
+from sedstacker.exceptions import (
+    NonSupportedFileFormatError,
+    NonStandardColumnNamesError,
+    PreExistingFileError
+    )
+from sedstacker.config import NONE_VALS, NUMERIC_TYPES
 
 
-logger=logging.getLogger(__name__)
-formatter=logging.Formatter('%(levelname)s:%(message)s')
-logger.setLevel(logging.INFO)
+# Logging handler
+logger = logging.getLogger(__name__)
+formatter = logging.Formatter('%(levelname)s:%(message)s')
+hndlr = logging.StreamHandler()
+hndlr.setFormatter(formatter)
+logger.addHandler(hndlr)
 
+# Default units to load data in
+_YUNIT = 'erg/s/cm**2/AA'
+_XUNIT = 'AA'
 
-def load_sed(filename, xunit='AA', yunit='erg/s/cm**2/AA', sed_type='spectrum', fmt='ascii'):
-    '''Reads a file containing SED data adhering to the SED File format and returns either a Sed or Spectrum object, depending on the argument of 'type'.
+def load_sed(filename, xunit=_XUNIT, yunit=_YUNIT, sed_type='spectrum', fmt='ascii'):
+    '''
+    Reads a file containing SED data adhering to the SED File format and
+    returns either a Sed or Spectrum object, depending on the argument
+    of 'type'.
 
-    The file must follow the SED File format: a file with at least two columns of equal length separated by whitespace representing the spectral and flux axes; the first line of the header contains the column names, where the spectral, flux and flux-error (if it exists) columns must be named 'x', 'y' and 'y_err', respectively.
+    The file must follow the SED File format: a file with at least two
+    columns of equal length separated by whitespace representing the spectral
+    and flux axes; the first line of the header contains the column names,
+    where the spectral, flux and flux-error (if it exists) columns must be
+    named 'x', 'y' and 'y_err', respectively.
 
     Parameters
     ----------
@@ -29,13 +48,15 @@ def load_sed(filename, xunit='AA', yunit='erg/s/cm**2/AA', sed_type='spectrum', 
     xunit : str
         The spectral coordinate units. Default is Angstroms.
     yunit : str
-        The flux units. Default is erg/s/cm^2/Angstrom.
+        The flux units. Default is erg/s/cm**2/Angstrom.
     sed_type : 'spectrum' or 'sed'
-        The argument for sed_type determines whether the object is loaded as a Spectrum or Sed object. Default is 'spectrum'.
+        The argument for sed_type determines whether the object is loaded as a
+        Spectrum or Sed object. Default is 'spectrum'.
     fmt : 'ascii' or str
         The file format.
         
-        *For release 1.0, only ASCII files will be supported, so* fmt **must** *be* 'ascii'.
+        *For release 1.0, only ASCII files will be supported, so* fmt **must**
+        *be* 'ascii'.
 
     Returns
     -------
@@ -82,7 +103,8 @@ def load_sed(filename, xunit='AA', yunit='erg/s/cm**2/AA', sed_type='spectrum', 
 
     Notes
     -----
-    - If the file is the result of a stacked SED, then the 'counts' column will also be stored in the Sed or Spectrum object as attribute *count*.
+    - If the file is the result of a stacked SED, then the 'counts' column will
+    also be stored in the Sed or Spectrum object as attribute *count*.
 
     '''
 
@@ -124,14 +146,19 @@ def load_sed(filename, xunit='AA', yunit='erg/s/cm**2/AA', sed_type='spectrum', 
         return sed
 
     else:
-        raise ValueError('Invalid argument for keyword sed_type. Options: "spectrum" or "sed".')
+        raise ValueError('Invalid argument for keyword sed_type.'+ 
+                         'Options: "spectrum" or "sed".')
 	
 
-def load_dir(directory, xunit='AA', yunit='erg/s/cm**2/AA', sed_type='spectrum', fmt='ascii'):
+def load_dir(directory, xunit=_XUNIT, yunit=_YUNIT, sed_type='spectrum', fmt='ascii'):
 
     '''Loads a directory of spectra into one AggregateSed.
 
-    The files must follow the SED File format: files with at least two columns of equal length separated by whitespace representing the spectral and flux axes; the first line of the header contains the column names, where the spectral, flux and flux-error (if it exists) columns must be named 'x', 'y' and 'y_err', respectively.
+    The files must follow the SED File format: files with at least two columns
+    of equal length separated by whitespace representing the spectral and flux
+    axes; the first line of the header contains the column names, where the
+    spectral, flux and flux-error (if it exists) columns must be named 'x', 'y'
+    and 'y_err', respectively.
 
     Parameters
     ----------
@@ -142,25 +169,34 @@ def load_dir(directory, xunit='AA', yunit='erg/s/cm**2/AA', sed_type='spectrum',
     yunit : str
         The flux units. Default is erg/s/cm^2/Angstrom.
     sed_type : 'spectrum' or 'sed'
-        The argument for sed_type determines whether the object is loaded as a Spectrum or Sed object. Default is 'spectrum'.
+        The argument for sed_type determines whether the object is loaded as a
+        Spectrum or Sed object. Default is 'spectrum'.
     fmt : 'ascii' or str
         The file format.
         
-        *For release 1.0, only ASCII files will be supported, so* fmt **must** *be* 'ascii'.
+        *For release 1.0, only ASCII files will be supported, so* fmt **must**
+        *be* 'ascii'.
 
     Returns
     -------
     list of sedstacker.sed.Spectrum or sedstacker.sed.Sed
-        A list of Spectra or Sed objects, depending on the value of parameter *sed_type*.
+        A list of Spectra or Sed objects, depending on the value of parameter
+        *sed_type*.
 
     Notes
     -----
-    - All files must be in the same units, and of the same sed_type (i.e. you cannot mix Sed and Spectrum objects together via this function).
-    - If the file is the result of a stacked SED, then the 'counts' column will also be stored in the Sed or Spectrum object as attribute *count*.
+    - All files must be in the same units, and of the same sed_type (i.e. you
+    cannot mix Sed and Spectrum objects together via this function).
+    - If the file is the result of a stacked SED, then the 'counts' column
+    will also be stored in the Sed or Spectrum object as attribute *count*.
 
     Examples
     --------
-    Say directory 'my/data/directory/' contains data files of spectra we'd like to load for analysis with SEDstacker. The files are in the same units, with the spectral axis in Angstroms and the flux axis in erg/s/cm**2/Angstrom. Some files have flux-error columns, some do not. Here's an example of one of the files in the directory::
+    Say directory 'my/data/directory/' contains data files of spectra we'd like
+    to load for analysis with SEDstacker. The files are in the same units, with
+    the spectral axis in Angstroms and the flux axis in erg/s/cm**2/Angstrom.
+    Some files have flux-error columns, some do not. Here's an example of one
+    of the files in the directory::
 
          x y y_err
          2266.1474     0.032388065  1.015389e-4
@@ -177,28 +213,40 @@ def load_dir(directory, xunit='AA', yunit='erg/s/cm**2/AA', sed_type='spectrum',
     >>> from sedstacker.io import load_dir
     >>> spectra = load_dir('my/data/directory/', sed_type='spectrum')
     
-    'spectra' is a list of Spectrum objects representing the data from each file in 'my/data/directory/'.
+    'spectra' is a list of Spectrum objects representing the data from each
+    file in 'my/data/directory/'.
 
     '''
     direc = os.listdir(directory)
 
-    spectra = [load_sed(directory+files, xunit=xunit, yunit=yunit, sed_type=sed_type, fmt=fmt) for files in direc]
+    spectra = []
+    for files in direc:
+        spectra.append(load_sed(directory+files, 
+                             xunit=xunit, yunit=yunit, sed_type=sed_type, 
+                             fmt=fmt)
+                    )
 
     return AggregateSed(spectra)
 
 
 def load_cat(filename, column_map, fmt='ascii', **kwargs):
 
-    '''Reads a photometry catalog and returns an AggregateSed (if the file contains multiple SEDs) or a Sed (if file contains just one SED).
+    '''
+    Reads a photometry catalog and returns an AggregateSed (if the file
+    contains multiple SEDs) or a Sed (if file contains just one SED).
 
     Parameters
     ----------
     filename : str
         The name of the input file.
     column_map : dict
-        A dictionary that assigns the spectral values, units and flux units for each photometric band in the catalog. The key must be the name of the column, and the value must be a four-element tuple in the order spectral value, spectral unit, flux unit, and flux error column name.
+        A dictionary that assigns the spectral values, units and flux units
+        for each photometric band in the catalog. The key must be the name of
+        the column, and the value must be a four-element tuple in the order
+        spectral value, spectral unit, flux unit, and flux error column name.
         
-        Ex: Catalog with two photometric bands, named 'sdss_g' and 'mips24'. The file looks like
+        Ex: Catalog with two photometric bands, named 'sdss_g' and 'mips24'.
+        The file looks like
         
         .. code-block::
             # ID z sdss_g sdss_gerr mips24 mips24err
@@ -208,7 +256,9 @@ def load_cat(filename, column_map, fmt='ascii', **kwargs):
                           'mips24':(240000., 'AA', 'mag','mips24err')
                           } 
 
-        If there is no error column associated with a flux column, the fourth element in the tuple (the error column name) should be "None". For Ex, if sdss_g had no error column, we'd write:
+        If there is no error column associated with a flux column, the fourth
+        element in the tuple (the error column name) should be "None". For Ex,
+        if sdss_g had no error column, we'd write:
 
         >>> column_map = {'sdss_g':(4770., 'AA', 'mag', None),
                           'mips24':(240000., 'AA', 'mag','mips24err')
@@ -216,7 +266,8 @@ def load_cat(filename, column_map, fmt='ascii', **kwargs):
     fmt : str
         The file format of the input file.
         
-        *For release 1.0, only ASCII files will be supported, so* fmt **must** *be* 'ascii'.
+        *For release 1.0, only ASCII files will be supported, so* fmt **must**
+        *be* 'ascii'.
 
     Returns
     -------
@@ -225,7 +276,8 @@ def load_cat(filename, column_map, fmt='ascii', **kwargs):
 
     Examples
     --------
-    Say we have photometric data for 6 sources, ranging from the UV to near-IR with the following format:
+    Say we have photometric data for 6 sources, ranging from the UV to near-IR
+    with the following format:
     
     >>> more photometry-catalog.dat
     #ID    z   ucfht errU  Bsub errB  Vsub errV  gsub errg  rsub errR  isub errI  zsub errz
@@ -237,11 +289,19 @@ def load_cat(filename, column_map, fmt='ascii', **kwargs):
      194 1.456 24.78 0.11 24.54 0.09 24.62 0.13 24.65 0.13 24.12 0.09 23.70 0.09 22.99 0.09
      331 2.415 26.89 0.68 25.92  0.3 25.55 0.30 25.75 0.35 25.19 0.22 24.97 0.25 25.21 0.63
 
-    The first commented row contains the column names; the second row has the effective wavelengths of the photometric bands. Column names must follow Python's identifier syntax [0]_.
+    The first commented row contains the column names; the second row has the
+    effective wavelengths of the photometric bands. Column names must follow
+    Python's identifier syntax [0]_.
     
-    Missing or unknown data should be represented by either 'null', 'None', 'none', '-99', '-99.', 'nan' or 'NaN' in the data file. If the null value cell is a flux value, then that photometric point will be ignored from the Sed. Otherwise, the value will be converted to numpy.nan. For example, in the file above, SED ID 41 will not have a photometric point at 'isub' (7640.8 AA). ID 164's 'Vsub' flux-error value will be numpy.nan.
+    Missing or unknown data should be represented by either
+    'null', 'None', 'none', '-99', '-99.', 'nan' or 'NaN' in the data file.
+    If the null value cell is a flux value, then that photometric point will be
+    ignored from the Sed. Otherwise, the value will be converted to numpy.nan.
+    For example, in the file above, SED ID 41 will not have a photometric point
+    at 'isub' (7640.8 AA). ID 164's 'Vsub' flux-error value will be numpy.nan.
 
-    Next, we create the column map to assign the spectral values, units, and flux units to each photometric band.
+    Next, we create the column map to assign the spectral values, units, and
+    flux units to each photometric band.
 
     >>> column_map = {"ucfht":(3823.0,"AA","mag","errU"),
                       "Bsub":(4459.7,"AA","mag","errB"),
@@ -257,7 +317,9 @@ def load_cat(filename, column_map, fmt='ascii', **kwargs):
     >>> from sedstacker.io import load_cat
     >>> seds = load_cat('photometry-catalog.dat', column_map)
 
-    In this case, seds is an AggregateSed, which is a list of Sed objects. The AggregateSed's spectral, flux and flux-errors are lists of the individual SEDs' spectral, flux, and flux-errors:
+    In this case, seds is an AggregateSed, which is a list of Sed objects. The
+    AggregateSed's spectral, flux and flux-errors are lists of the individual
+    SEDs' spectral, flux, and flux-errors:
 
     >>> # View the spectral axes
     >>> 
@@ -274,7 +336,9 @@ def load_cat(filename, column_map, fmt='ascii', **kwargs):
     >>> seds[2].y
     array([ 21.16,  21.05,  20.84,  21.01,  20.51,  20.18,  19.96])
     
-    All columns are added as attributes to the individual Seds in the resultant AggregateSed. The column names are converted to lowercase before being assigned as an attribute.
+    All columns are added as attributes to the individual Seds in the resultant
+    AggregateSed. The column names are converted to lowercase before being
+    assigned as an attribute.
 
     >>> seds[1].id
     41
@@ -283,7 +347,8 @@ def load_cat(filename, column_map, fmt='ascii', **kwargs):
 
     Notes
     -----
-    - If a column of redshift values exists in the photometry catalog, label the column as 'z' for load_cat() to read the redshift information in correctly.
+    - If a column of redshift values exists in the photometry catalog, label
+    the column as 'z' for load_cat() to read the redshift information in correctly.
 
     References
     ----------
@@ -291,21 +356,22 @@ def load_cat(filename, column_map, fmt='ascii', **kwargs):
 
     '''
 
-    # **kwargs: keyword arguments accepted by astopy.io.ascii.read() may be used to further specify the information you wish to load.
-
     if not _check_file_format(fmt):
         raise NonSupportedFileFormatError('%s is a non-supported file format.' % fmt)
 
     try:
-        catalog = ascii.read(filename, header_start = -1) #kwargs
+        catalog = ascii.read(filename,
+                             format='commented_header',
+                             header_start = -1)
+
     # catch unequal lengths of table columns or rows
-    except InconsistentTableError, e:
+    except InconsistentTableError:
         try:
             catalog = ascii.read(filename)
-        except InconsistentTableError, e:
-            print e
-            raise InconsistentTableError('File does not follow Photometry Catalog format.'+
-                                         ' Check that all columns have the same number of rows.')
+        except InconsistentTableError:
+            raise InconsistentTableError('File does not follow Photometry '+
+                                      'Catalog format. Check that all '+
+                                      'columns have the same number of rows.')
     # catch bad column names
     except KeyError, e:
         if e.message == 0:
@@ -317,8 +383,14 @@ def load_cat(filename, column_map, fmt='ascii', **kwargs):
 
     # catch bad column names
     if column_names[0] == 'col1':
+        catalog = ascii.read(filename, format='commented_header')
+        column_names = catalog.colnames
+    if column_names[0] == 'col1':
+        raise ValueError('Column names in file do not match column names in '+
+                         'column_map.')
+    if _check_float_colnames(column_names):
         raise NonStandardColumnNamesError
-
+        
     seds = []
 
     for row in range(len(catalog)):
@@ -363,7 +435,8 @@ def load_cat(filename, column_map, fmt='ascii', **kwargs):
                  yerr[i] = numpy.nan
             else:
                 yerr[i] = numpy.float_(yerr[i])
-            sed.add_point(PhotometricPoint(x=x[i],y=y[i],yerr=yerr[i],xunit=xunit[i],yunit=yunit[i]))
+            sed.add_point(PhotometricPoint(x=x[i],y=y[i],yerr=yerr[i],
+                                           xunit=xunit[i],yunit=yunit[i]))
 
         seds.append(sed)
 
@@ -397,40 +470,56 @@ def _read_standard_colnames(sed_file):
 
 def _read_nonstandard_colnames(sed_file):
     cols = sed_file.colnames
-    sed_file.rename_column(cols[0],'x')
-    sed_file.rename_column(cols[1],'y')
+    spec = numpy.array(sed_file[cols[0]].data)
+    flux = numpy.array(sed_file[cols[1]].data)
     if len(cols) > 2:
-        sed_file.rename_column(cols[2],'y_err')
-    spec = numpy.array(sed_file['x'].data)
-    flux = numpy.array(sed_file['y'].data)
-    if 'y_err' in sed_file.colnames:
-        fluxerr = numpy.array(sed_file['y_err'].data)
+        fluxerr = numpy.array(sed_file[cols[2]].data)
     else:
         _no_fluxerror_column_info()
-        fluxerr = None
+        fluxerr = [None]*spec.size
     counts = None
+    
+    # if no column names are provided, ascii.read() makes the first
+    # row of the file into the column names
+    if _no_colnames(cols):
+        spec = numpy.insert(spec, 0, float(cols[0]))
+        flux = numpy.insert(flux, 0, float(cols[1]))
+        try:
+            fluxerr = numpy.insert(fluxerr, 0, float(cols[2]))
+        except IndexError:
+            fluxerr = numpy.insert(fluxerr, 0, None)
 
     return dict(x=spec, y=flux, y_err=fluxerr, counts=counts)
     
 
 def _read_ascii(filename):
-    '''Returns a dictionary representation of the SED data from an ASCII file following the SED File format.
-    Args:
-        filename (str): Name of ASCII file.
-    Returns:
-        dict('x':spec, 'y':flux, 'y_err':fluxerr)
+    '''
+    Returns a dictionary representation of the SED data from an ASCII file
+    following the SED File format.
 
-        Note:
-            This does NOT store any other columns of information (11/26/2013)'''
+    Parameters
+    ----------
+    filename : str
+        Name of ASCII file.
+
+    Returns
+    -------
+    dict('x':spec, 'y':flux, 'y_err':fluxerr)
+
+    Notes
+    -----
+    This does NOT store any other columns of information (11/26/2013)
+
+    '''
 
     try:
-        sed_file = ascii.read(filename, format='commented_header') #, header_start = -1)
+        sed_file = ascii.read(filename, format='commented_header')
         d = _read_standard_colnames(sed_file)
 
     except KeyError:
         _non_standard_column_names_warning(filename)
         
-        sed_file = ascii.read(filename, format='commented_header') #, header_start = -1)
+        sed_file = ascii.read(filename, format='commented_header')
         d = _read_nonstandard_colnames(sed_file)
 
     except InconsistentTableError:
@@ -459,7 +548,7 @@ def _read_ascii(filename):
     # if there's no y_err column in file
     # set the fluxerr to None
     except TypeError:
-        d['yerr'] = None
+        d['y_err'] = numpy.array([None]*d['x'].size)
 
     return dict(x=d['x'], y=d['y'], y_err=d['y_err'], counts=d['counts'])
 
@@ -477,3 +566,32 @@ def _non_standard_column_names_warning(filename):
                    % os.path.split(filename)[1]
                    )
 
+def _no_colnames(cols):
+
+    count=0
+    for name in cols:
+        try:
+            if float(name):
+                count += 1
+        except ValueError:
+            pass
+
+    if count != len(cols):
+        return False
+    
+    return True
+
+
+def _check_float_colnames(cols):
+    
+    count=0
+    for name in cols:
+        try:
+            count += float(name)
+        except ValueError:
+            pass
+
+    if count > 0:
+        return True
+
+    return False

@@ -117,7 +117,7 @@ class TestSed(unittest.TestCase):
         shifted_sed_cfTrue = sed.shift(0.1)
         
         self.assertEqual(shifted_sed_cfTrue.z, 0.1)
-        self.assertAlmostEqual('%.2f' % shifted_sed_cfTrue[1].x, repr(1858.75))
+        self.assertAlmostEqual(shifted_sed_cfTrue[1].x, 1858.75094339)
 
 
     def test_normalize_by_int(self):
@@ -173,8 +173,6 @@ class TestSed(unittest.TestCase):
 
         sed.yerr = 1e-10
         numpy.testing.assert_array_equal(sed.yerr, numpy.array([1e-10]*len(sed)))
-        with self.assertRaises(AssertionError):
-            sed.yerr = [1e-13]
         
 
 

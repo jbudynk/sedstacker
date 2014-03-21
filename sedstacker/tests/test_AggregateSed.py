@@ -2,14 +2,13 @@ import numpy
 import unittest
 import warnings
 import logging
-import matplotlib.pyplot as plt
 from sedstacker.sed import AggregateSed, Sed, Spectrum, Segment
 from sedstacker.exceptions import *
 
 
 class TestAggregateSed(unittest.TestCase):
 
-    def testAggregateSed__init__(self):
+    def test_AggregateSed__init__(self):
 
         segment1 = Sed()
         segment2 = Spectrum()
@@ -20,7 +19,7 @@ class TestAggregateSed(unittest.TestCase):
         self.assertEqual(len(aggsed), 3)
 
 
-    def testAggregateSed__init__raiseNotASegment(self):
+    def test_AggregateSed__init__raiseNotASegment(self):
         
         segment1 = Spectrum()
         segment2 = Sed()
@@ -105,8 +104,8 @@ class TestAggregateSed(unittest.TestCase):
         shift_aggsed = aggsed.shift(0.5)
 
         self.assertEqual(len(shift_aggsed), 2)
-        self.assertEqual(shift_aggsed.x[0][1], 757.5)
-        self.assertEqual('%.2f' % shift_aggsed.x[1][1], repr(1666.67))
+        self.assertAlmostEqual(shift_aggsed.x[0][1], 757.5)
+        self.assertAlmostEqual(shift_aggsed.x[1][1], 1666.6666667)
 
 
     def test_norm_by_int(self):
@@ -180,9 +179,9 @@ class TestAggregateSed(unittest.TestCase):
 
     def test_norm_at_point(self):
 
-        segment1 = Spectrum(x = numpy.arange(1000,10000,10),
-                            y = numpy.arange(1000,10000,10),
-                            yerr=numpy.arange(1000,10000,10)*.01,
+        segment1 = Spectrum(x = numpy.arange(1000,10000,1),
+                            y = numpy.arange(1000,10000,1),
+                            yerr=numpy.arange(1000,10000,1)*.01,
                             z=1.0)
         segment2 = Sed(x=numpy.arange(1000,10000,500),
                        y=numpy.arange(1000,10000,500),
@@ -196,8 +195,11 @@ class TestAggregateSed(unittest.TestCase):
                             yerr=numpy.arange(1000,10000,10)*.01,
                             z=1.0)
 
+        x0 = 5025
+        y0 = 1000
+
         aggsed = AggregateSed([segment1, segment2, segment3, segment4])
-        norm_aggsed = aggsed.normalize_at_point(5000,1000)
+        norm_aggsed = aggsed.normalize_at_point(x0,y0)
 
         sedarray = segment3._toarray()
         control_norm_aggsed_segment3 = sedarray[1]*0.2
@@ -205,7 +207,7 @@ class TestAggregateSed(unittest.TestCase):
         self.assertEqual(norm_aggsed[1][8].y, 1000)
         sedarray = norm_aggsed[2]._toarray()
         numpy.testing.assert_array_almost_equal(sedarray[1], control_norm_aggsed_segment3)
-        self.assertEqual(norm_aggsed[0].norm_constant, 0.2)
+        self.assertEqual(norm_aggsed[0].norm_constant, numpy.float_(y0)/5025)
 
 
     def test_norm_at_point_correct_flux(self):
@@ -292,14 +294,6 @@ class TestAggregateSed(unittest.TestCase):
         self.assertEqual(len(aggsed), 5)
         self.assertEqual(len(aggsed.x[4]), len(segment3))
         
-
-#        sed2=norm_aggsed[1]._toarray()
-#        sed3=norm_aggsed[2]._toarray()
-#        plt.loglog(norm_aggsed[0].x,norm_aggsed[0].x,'r')
-#        plt.loglog(sed2[0],sed2[1],'ko')
-#        plt.loglog(sed3[0],sed3[1],'go')
-#        plt.loglog(norm_aggsed[3].x,norm_aggsed[3].x,'b')
-#        plt.show()
 
 if __name__ == '__main__':
     unittest.main()

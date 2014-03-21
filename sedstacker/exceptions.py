@@ -104,8 +104,8 @@ class OutsideRangeError(Exception):
 
     """
 
-    msg = ('The Segment does not fall within the specified spectral range for '+ 
-           'normalization')
+    msg = ('The Segment does not fall within the specified spectral range '+
+           'for normalization')
 
     def __init__(self, msg=msg):
         Exception.__init__(self, msg)
@@ -163,7 +163,7 @@ class NonStandardColumnNamesError(Exception):
     
     """
     def __init__(self):
-        Exception.__init__(self, 'Column names must have at least one ' + 
-                           'non-numeric character in the string name.\n ' + 
+        Exception.__init__(self, 'Column names must begin with an alphabetic' + 
+                           ' character in the string name.\n ' + 
                            '[Ex 1: ID RA s16 ds16 (correct)]\n [Ex 2: ID RA ' +
                            '16 d16 (wrong)]')

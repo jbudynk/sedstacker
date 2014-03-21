@@ -6,6 +6,7 @@ import unittest
 from sedstacker import io
 from sedstacker.sed import AggregateSed, Sed, stack
 import matplotlib.pyplot as plt
+import datetime
 
 logging.basicConfig(level=logging.INFO)
 
@@ -57,18 +58,16 @@ plt.plot(restframe_aggsed.x[1],restframe_aggsed.y[1],'ko', norm_point_aggsed.x[1
 plt.legend(('restframe','norm_at_point','norm_by_int'), fontsize='x-small', loc=2)
 plt.show()
 
+start = datetime.datetime.now()
 stack_i = stack(norm_int_aggsed, 0.1, 'wavg', fill='remove', logbin=True)
 stack_p = stack(norm_point_aggsed, 0.1, 'wavg', fill='remove', logbin=True)
 stack_rf = stack(restframe_aggsed, 0.1, 'wavg', fill='remove', logbin=True)
+end = datetime.datetime.now()
+
+print(end - start)
 
 plt.loglog(stack_rf.x,stack_rf.y,'ko',stack_p.x,stack_p.y,'go',stack_i.x,stack_i.y,'ro')
 plt.legend(('restframe','norm_at_point','norm_by_int'),fontsize='x-small', loc=2)
 plt.show()
-
-print len(stack_arri[0])
-print len(stack_arrp[0])
-print len(stack_arrrf[0])
-minwl = 1119.47291362
-maxwl = 143884.892086
 
 
