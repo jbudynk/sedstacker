@@ -18,5 +18,4 @@ Module contents
 
 .. automodule:: sedstacker
     :members:
-    :undoc-members:
     :show-inheritance:
