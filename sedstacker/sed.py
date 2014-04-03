@@ -95,8 +95,7 @@ class Segment(object):
 
 
 class Spectrum(Segment):
-    '''
-    A Spectrum is a spectrum in the astrophysical sense, meant to represent data taken from a spectrometer.
+    '''A Spectrum is a spectrum in the astrophysical sense, meant to represent data taken from a spectrometer.
 
     Parameters
     ----------
@@ -150,25 +149,9 @@ class Spectrum(Segment):
         >>> spectrum.z
         0.32
 
-    Attributes
-    ----------
-    x : array_like
-        The spectral coordinates. Default value is an empty list.
-    y : array_like
-        The flux values. Default value is an empty list.
-    yerr : array_like, float or int
-        The errors on the flux values. Default value is None.
-    xunit : string
-        The spectral coordinate units. Default value is 'AA'.
-    yunit : string
-        The flux coordinates. Default value is 'erg/s/cm**2/AA'.
-    z : float
-        The redshift of the Sed. Default value is None.
-
     '''
 
     def __init__(self, x=[], y=[], yerr=None, xunit='AA', yunit='erg/s/cm**2/AA', z=None):
-        # Returns a Spectrum.
 
         if len(x) != len(y):
             raise SegmentError('x and y must be of the same length.')
@@ -272,7 +255,6 @@ class Spectrum(Segment):
 
 
     def normalize_at_point(self, x0, y0, dx=50, norm_operator=0, correct_flux=False, z0=None):
-
         '''Normalizes the spectrum such that at spectral coordinate x0,
         the flux of the spectrum is y0.
 
@@ -385,7 +367,6 @@ class Spectrum(Segment):
 
 
     def normalize_by_int(self, minWavelength='min', maxWavelength='max', correct_flux=False, z0=None):
-
         '''Normalizes the Spectrum such that the area under the specified wavelength range is equal to 1.
 
         Algorithm taken from astLib.astSED.normalise(); uses the Trapezoidal rule to estimate the integrated flux.
@@ -543,18 +524,18 @@ class Sed(Segment, list):
 
     Attributes
     ----------
-    x : numpy.array
-        The spectral coordinates. Default value is an empty list, [].
-    y : numpy.array
-        The flux values. Default value is an empty list, [].
-    yerr : numpy.array
-        The errors on the flux values. Default value is None.
+    x : numpy.array of floats
+        The spectral coordinates.
+    y : numpy.array of floats
+        The flux values.
+    yerr : numpy.array of floats
+        The errors on the flux values.
     xunit : numpy.array of str
-        The spectral coordinate units. Default value is ['AA'].
+        The spectral coordinate units.
     yunit : numpy.array of str
-        The flux coordinates. Default value is ['erg/s/cm**2/AA'].
+        The flux coordinates.
     z : float, int
-        The redshift of the Sed. Default value is None.
+        The redshift of the Sed.
     norm_constant : float
         The normalization constant of the Sed. Default value is None.
     counts : array of int
