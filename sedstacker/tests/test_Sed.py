@@ -26,7 +26,6 @@ class TestSed(unittest.TestCase):
         self.assertAlmostEqual(sed[0].x, 3823.0)
         self.assert_(sed[1].xunit == 'Angstrom')
         self.failUnlessEqual(len(sed), 3)
-        self.assertEqual(len(sed.__dict__), 1)
         self.assertEqual(sed.z, 1.65)
 
 

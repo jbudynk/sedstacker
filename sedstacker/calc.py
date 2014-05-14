@@ -69,6 +69,7 @@ def binup(y, x, xarr, statistic, binsize, fill, yerr, logbin = False):
             highcut = numpy.less_equal(x, high_lim)
         else:
             high_cut = numpy.less(x, high_lim)
+
         total_cut = numpy.logical_and(low_cut, high_cut)
         y_bin = y[total_cut]
         yerr_bin = yerr[total_cut]
