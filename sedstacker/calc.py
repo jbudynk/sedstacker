@@ -50,9 +50,8 @@ def binup(y, x, xarr, statistic, binsize, fill, yerr, logbin = False):
 
     warnings.simplefilter("ignore", UserWarning)
     total=0
+
     for i in range(nx):
-        high_lim = xarr[i] + xbin
-        low_lim = xarr[i] - xbin
         #high_lim = (x <= xarr[i] + xbin)
         #low_lim = (x >= xarr[i] - xbin)
         # the next 2 lines are very inefficient - for 6 sources, takes
@@ -63,15 +62,27 @@ def binup(y, x, xarr, statistic, binsize, fill, yerr, logbin = False):
         start = time.clock()
 
         # This method takes ~8 seconds for 6 sources w/ 10000 points
-        low_cut = numpy.greater_equal(x, low_lim)
-        # deal with bin edges
-        if x.any() == high_lim:
-            highcut = numpy.less_equal(x, high_lim)
-        else:
-            high_cut = numpy.less(x, high_lim)
-        total_cut = numpy.logical_and(low_cut, high_cut)
-        y_bin = y[total_cut]
-        yerr_bin = yerr[total_cut]
+        #high_lim = xarr[i] + xbin
+        #low_lim = xarr[i] - xbin
+        #low_cut = numpy.greater_equal(x, low_lim)
+        ## deal with bin edges
+        #if x.any() == high_lim:
+        #    highcut = numpy.less_equal(x, high_lim)
+        #else:
+        #    high_cut = numpy.less(x, high_lim)
+        #total_cut = numpy.logical_and(low_cut, high_cut)
+        #y_bin = y[total_cut]
+        #yerr_bin = yerr[total_cut]
+
+        lim = xarr[i] + xbin
+        cut = numpy.less(x, lim)
+        y_bin = y[cut]
+        yerr_bin = yerr[cut]
+
+        cut = numpy.invert(cut)
+        x = x[cut]
+        y = y[cut]
+        yerr = yerr[cut]
 
         end = time.clock()
         total += (end-start)
@@ -100,7 +111,7 @@ def binup(y, x, xarr, statistic, binsize, fill, yerr, logbin = False):
         outerr = fill_remove(mask, outerr)
         counts = fill_remove(mask, count)
 
-    return yarr, xarr, outerr, counts
+    return yarr, xarr, outerr, counts   
 
 
 def wavg_bin(y_bin, yerr_bin, count):
@@ -159,16 +170,17 @@ def fill_remove(mask, arr):
 
 def setup_binup_arrays(y, x, xarr, binsize, yerr, logbin=False):
 
+    xbin = binsize/2.0
+    nx = len(xarr)
+
+    y = numpy.array(y)
+    yerr = numpy.ma.masked_invalid(yerr)
+
     if logbin:
-        x = numpy.log10(numpy.array(x))
+        x = numpy.log10(x)
         xarr = numpy.log10(xarr)
     else:
         x = numpy.array(x)
-
-    xbin = binsize/2.0
-    nx = len(xarr)
-    y = numpy.array(y)
-    yerr = numpy.ma.masked_invalid(yerr)
 
     # to be binned y-values and y-error values
     yarr = xarr*0
@@ -178,6 +190,18 @@ def setup_binup_arrays(y, x, xarr, binsize, yerr, logbin=False):
     skipit = numpy.ones(len(yarr))
 
     return x, xarr, y, yerr, nx, xbin, yarr, outerr, count, skipit
+
+
+def _sorts(x, y, yerr):
+    points = []
+    for i, point in enumerate(x):
+        points.append([x[i], y[i], yerr[i]])
+    points = zip(*sorted(points))
+    x = numpy.array(points[0])
+    y = numpy.array(points[1])
+    yerr = numpy.ma.masked_invalid(points[2])
+
+    return x, y, yerr 
 
 
 def smooth(arr, smooth_binsize):
