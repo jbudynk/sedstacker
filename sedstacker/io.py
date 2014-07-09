@@ -8,7 +8,7 @@ from astropy.io.ascii.core import InconsistentTableError
 from astropy.table import Table
 
 from sedstacker.sed import (
-    PhotometricPoint, Sed, Spectrum, AggregateSed, create_from_points
+    PhotometricPoint, Sed, Spectrum, Stack, create_from_points
     )
 from sedstacker.exceptions import (
     NonSupportedFileFormatError,
@@ -152,7 +152,7 @@ def load_sed(filename, xunit=_XUNIT, yunit=_YUNIT, sed_type='spectrum', fmt='asc
 
 def load_dir(directory, xunit=_XUNIT, yunit=_YUNIT, sed_type='spectrum', fmt='ascii'):
 
-    '''Loads a directory of spectra into one AggregateSed.
+    '''Loads a directory of spectra into one Stack.
 
     The files must follow the SED File format: files with at least two columns
     of equal length separated by whitespace representing the spectral and flux
@@ -226,13 +226,13 @@ def load_dir(directory, xunit=_XUNIT, yunit=_YUNIT, sed_type='spectrum', fmt='as
                              fmt=fmt)
                     )
 
-    return AggregateSed(spectra)
+    return Stack(spectra)
 
 
 def load_cat(filename, column_map, fmt='ascii', **kwargs):
 
     '''
-    Reads a photometry catalog and returns an AggregateSed (if the file
+    Reads a photometry catalog and returns a Stack (if the file
     contains multiple SEDs) or a Sed (if file contains just one SED).
 
     Parameters
@@ -271,7 +271,7 @@ def load_cat(filename, column_map, fmt='ascii', **kwargs):
 
     Returns
     -------
-    sedstacker.sed.AggregateSed  or  sedstacker.sed.Sed
+    sedstacker.sed.Stack  or  sedstacker.sed.Sed
         
 
     Examples
@@ -317,8 +317,8 @@ def load_cat(filename, column_map, fmt='ascii', **kwargs):
     >>> from sedstacker.io import load_cat
     >>> seds = load_cat('photometry-catalog.dat', column_map)
 
-    In this case, seds is an AggregateSed, which is a list of Sed objects. The
-    AggregateSed's spectral, flux and flux-errors are lists of the individual
+    In this case, seds is a Stack, which is a list of Sed objects. The
+    Stack's spectral, flux and flux-errors are lists of the individual
     SEDs' spectral, flux, and flux-errors:
 
     >>> # View the spectral axes
@@ -337,7 +337,7 @@ def load_cat(filename, column_map, fmt='ascii', **kwargs):
     array([ 21.16,  21.05,  20.84,  21.01,  20.51,  20.18,  19.96])
     
     All columns are added as attributes to the individual Seds in the resultant
-    AggregateSed. The column names are converted to lowercase before being
+    Stack. The column names are converted to lowercase before being
     assigned as an attribute.
 
     >>> seds[1].id
@@ -441,7 +441,7 @@ def load_cat(filename, column_map, fmt='ascii', **kwargs):
         seds.append(sed)
 
     if len(seds) > 1:
-        return AggregateSed(seds)
+        return Stack(seds)
     if len(seds) == 1:
         return seds[0]
 
