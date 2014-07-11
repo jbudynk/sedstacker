@@ -177,18 +177,6 @@ def setup_binup_arrays(y, x, xarr, binsize, yerr, logbin=False):
     return x, xarr, y, yerr, nx, xbin, yarr, outerr, count, skipit
 
 
-def _sorts(x, y, yerr):
-    points = []
-    for i, point in enumerate(x):
-        points.append([x[i], y[i], yerr[i]])
-    points = zip(*sorted(points))
-    x = numpy.array(points[0])
-    y = numpy.array(points[1])
-    yerr = numpy.ma.masked_invalid(points[2])
-
-    return x, y, yerr 
-
-
 def smooth(arr, smooth_binsize):
     window = numpy.ones(int(smooth_binsize))/float(smooth_binsize)
     return numpy.convolve(arr, window, 'same')
