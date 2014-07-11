@@ -1,14 +1,17 @@
 import numpy
 import types
 import warnings
-from sedstacker.exceptions import SegmentError
-import time
+import logging
 import types
+from sedstacker.exceptions import SegmentError
 
+logger=logging.getLogger(__name__)
+formatter=logging.Formatter('%(levelname)s:%(message)s')
+hndlr=logging.StreamHandler()
+hndlr.setFormatter(formatter)
+logger.addHandler(hndlr)
 
 def binup(y, x, xarr, statistic, binsize, fill, yerr, logbin = False):
-
-    #numpy.seterr(all='ignore')
 
     builtin_statistics = {'avg':avg_bin, 'wavg':wavg_bin, 'sum':sum_bin}
 
@@ -23,10 +26,8 @@ def binup(y, x, xarr, statistic, binsize, fill, yerr, logbin = False):
                              'Otherwise, input a user-defined function: \n\t'+
                              'y_combined, yerr_combined, number_of_combined_ys'+
                              ' = func(y_bin, yerr_bin, count)')
-
         else:
             statistic = builtin_statistics[statistic]
-
     else:
         if not isinstance(statistic, types.FunctionType):
             raise ValueError('Unknown built-in statistic. Choices are:\n'+
@@ -38,7 +39,6 @@ def binup(y, x, xarr, statistic, binsize, fill, yerr, logbin = False):
                              'Otherwise, input a user-defined function: \n\t'+
                              'y_combined, yerr_combined, number_of_combined_ys'+
                              ' = func(y_bin, yerr_bin, count)')
-
         else:
             statistic = statistic
         
@@ -48,42 +48,34 @@ def binup(y, x, xarr, statistic, binsize, fill, yerr, logbin = False):
     x, xarr, y, yerr, nx, xbin, yarr, outerr, count, skipit = \
         setup_binup_arrays(y, x, xarr, binsize, yerr, logbin = logbin)
 
+    nans_present = False
+    if any(numpy.isnan(yerr)):
+        nans_present = True
+        logger.info('NaNs found in flux errors. \'outerr\' array is variance of flux per bin.')
+        if statistic==wavg_bin:
+            statistic = avg_bin
+            logger.warning('NaNs found in flux errors. Using \'avg\' statistic instead of \'wavg.\'')
+
     warnings.simplefilter("ignore", UserWarning)
     total=0
+
     for i in range(nx):
-        high_lim = xarr[i] + xbin
-        low_lim = xarr[i] - xbin
-        #high_lim = (x <= xarr[i] + xbin)
-        #low_lim = (x >= xarr[i] - xbin)
-        # the next 2 lines are very inefficient - for 6 sources, takes
-        # ~12.5 secs
-        #y_bin = y[(x >= low_lim) & (x <= high_lim)]
-        #yerr_bin = yerr[(x >= low_lim) & (x<= high_lim)]
+        lim = xarr[i] + xbin
+        cut = numpy.less(x, lim)
+        y_bin = y[cut]
+        yerr_bin = yerr[cut]
 
-        start = time.clock()
-
-        # This method takes ~8 seconds for 6 sources w/ 10000 points
-        low_cut = numpy.greater_equal(x, low_lim)
-        # deal with bin edges
-        if x.any() == high_lim:
-            highcut = numpy.less_equal(x, high_lim)
-        else:
-            high_cut = numpy.less(x, high_lim)
-        total_cut = numpy.logical_and(low_cut, high_cut)
-        y_bin = y[total_cut]
-        yerr_bin = yerr[total_cut]
-
-        end = time.clock()
-        total += (end-start)
+        cut = numpy.invert(cut)
+        x = x[cut]
+        y = y[cut]
+        yerr = yerr[cut]
 
         count[i] = len(y_bin)
 
         if count[i] >= 1:
-            yarr[i], outerr[i], count[i] = statistic(y_bin, yerr_bin, count[i])
+            yarr[i], outerr[i], count[i] = statistic(y_bin, yerr_bin, nans_present)
         else:
             skipit[i] = 0
-
-    #print total, 'indexing'
 
     if logbin:
         xarr = 10**xarr
@@ -100,40 +92,44 @@ def binup(y, x, xarr, statistic, binsize, fill, yerr, logbin = False):
         outerr = fill_remove(mask, outerr)
         counts = fill_remove(mask, count)
 
-    return yarr, xarr, outerr, counts
+    return yarr, xarr, outerr, counts   
 
 
-def wavg_bin(y_bin, yerr_bin, count):
+def wavg_bin(y_bin, yerr_bin, nans_present):
 
-    weights = 1.0/yerr_bin**2
-    yarr = numpy.ma.average(y_bin, weights=weights)
-    outerr = numpy.sqrt((yerr_bin**2).sum())
-    # outerr[i] = numpy.std(y_bin)) 
-    # take either the stddev of y, or sum in quadrature of the errors
-    # If any NaN's exist in yerr_bin, then their corresponding fluxes
-    # will not be taken into account for the weighted average.
-    # The number of flux counts would be less than the number
-    # of points in xbin.
-    count = len(numpy.where(yerr_bin.mask == False)[0])
+    if nans_present:
+        yarr = numpy.mean(y_bin)
+        outerr = numpy.std(y_bin)
+    else:
+        weights = 1.0/yerr_bin**2
+        yarr = numpy.average(y_bin, weights=weights)
+        outerr = numpy.sqrt((yerr_bin**2).sum())
+
+    count = len(y_bin)
     
     return yarr, outerr, count
 
 
-def avg_bin(y_bin, yerr_bin, count):
+def avg_bin(y_bin, yerr_bin, nans_present):
 
+    if nans_present:
+        outerr = numpy.std(y_bin)
+    else:
+        outerr = numpy.sqrt((yerr_bin**2).sum())
     yarr = numpy.mean(y_bin)
-    #outerr = numpy.std(y_bin)
-    outerr = numpy.sqrt((yerr_bin**2).sum())
+    count = len(y_bin)
 
     return yarr, outerr, count
 
 
-def sum_bin(y_bin, yerr_bin, count):
+def sum_bin(y_bin, yerr_bin, nans_present):
 
+    if nans_present:
+        outerr = numpy.std(y_bin)
+    else:
+        outerr = numpy.sqrt((yerr_bin**2).sum())
     yarr = y_bin.sum()
-    #outerr = numpy.std(y_bin)
-    outerr = numpy.sqrt((yerr_bin**2).sum())
-
+    count = len(y_bin)
     return yarr, outerr, count
 
 
@@ -159,16 +155,17 @@ def fill_remove(mask, arr):
 
 def setup_binup_arrays(y, x, xarr, binsize, yerr, logbin=False):
 
+    xbin = binsize/2.0
+    nx = len(xarr)
+
+    y = numpy.array(y)
+    yerr = numpy.array(yerr)
+
     if logbin:
-        x = numpy.log10(numpy.array(x))
+        x = numpy.log10(x)
         xarr = numpy.log10(xarr)
     else:
         x = numpy.array(x)
-
-    xbin = binsize/2.0
-    nx = len(xarr)
-    y = numpy.array(y)
-    yerr = numpy.ma.masked_invalid(yerr)
 
     # to be binned y-values and y-error values
     yarr = xarr*0
@@ -178,6 +175,18 @@ def setup_binup_arrays(y, x, xarr, binsize, yerr, logbin=False):
     skipit = numpy.ones(len(yarr))
 
     return x, xarr, y, yerr, nx, xbin, yarr, outerr, count, skipit
+
+
+def _sorts(x, y, yerr):
+    points = []
+    for i, point in enumerate(x):
+        points.append([x[i], y[i], yerr[i]])
+    points = zip(*sorted(points))
+    x = numpy.array(points[0])
+    y = numpy.array(points[1])
+    yerr = numpy.ma.masked_invalid(points[2])
+
+    return x, y, yerr 
 
 
 def smooth(arr, smooth_binsize):

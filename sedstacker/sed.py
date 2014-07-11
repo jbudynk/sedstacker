@@ -1529,29 +1529,26 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
             - *'avg'* (default) - averages the fluxes within each bin using numpy.average
             - *'wavg'* - computes the weighted average for the fluxes within each bin using the corresponding flux-errors and numpy.average. If a point has no error associated with it, then it is excluded from the calculation.
             - *'sum'* - sums the fluxes within each bin.
-            - *func* - a user-defined function for combining the fluxes in each bin. It must accept three arguments: the first and second arguments as arrays for the flux and flux-error values in a bin, and the third as a value for the number of flux values within the bin. It must return the combined flux and flux-error values, and the number of flux values within the bin.
+            - *func* - a user-defined function for combining the fluxes in each bin. It must accept three arguments: the first and second arguments as arrays for the flux and flux-error values in a bin, and the third argument is a boolean which is False if there are no NaN-valued flux errors in the list of SEDs to be stacked. The function must return the combined flux and flux-error values, and the number of flux values within the bin.
 
             Ex:
 
-            >>> def my_weighted_avg(flux_bin, flux_error_bin, counts):
-                    weights = 1.0/flux_error_bin**2
-                    flux = numpy.ma.average(flux_bin, weights=weights)
-                    flux_error = numpy.sqrt((yerr_bin**2).sum())
-                    # If any NaN's exist in yerr_bin, then their corresponding fluxes
-                    # will not be taken into account for the weighted average.
-                    # The number of flux counts would be less than the number
-                    # of points in xbin.
-                    counts = len(numpy.where(yerr_bin.mask == False)[0])
+            >>> def my_weighted_avg(flux_bin, flux_err_bin, nans):
+                    if nans:
+                        # Removes points without flux errors from the bin
+                        # therefore removing them from the calculations.
+                        flux_err_bin = flux_err_bin[~numpy.isnan(flux_err_bin)]
+                        flux_bin = flux_bin[~numpy.isnan(flux_err_bin)]
+                        weights = 1.0/flux_error_bin**2
+                        flux = numpy.ma.average(flux_bin, weights=weights)
+                        flux_err = numpy.sqrt((flux_err_bin**2).sum())
+                    else:
+                        weights = 1.0/flux_error_bin**2
+                        flux = numpy.ma.average(flux_bin, weights=weights)
+                        flux_err = numpy.sqrt((flux_err_bin**2).sum())
+                    counts = len(flux_err_bin)
+
                     return yarr, outerr, counts
-
-            If your function does not reject any flux points, then you may just accept and pass *counts* without editing its value. ``stack()`` will take care of counting the number of flux values per bin. 
-
-            Ex:
-
-            >>> def my_func(flux_array, flux_error_array, counts):
-                flux_out = numpy.average(flux)
-                flux_error_out = numpy.average(flux_error)
-                return flux_out, flux_error_out, counts
 
     fill : str
         Switch that decides what to do with bins that have no flux counts in them. There are two options:
@@ -1571,6 +1568,7 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
     sedstacker.sed.Sed
         SED with attribute 'count'. Attributes z, xunit and yunit are taken from the first Segment in the list.
             counts - number of flux values combined per binsize.
+            stack() calculates the error of the combined fluxes for each bin. If all points in the input SEDs have flux errors associated to them, then ``stack()`` returns the square of the sum of the errors in quadrature as the flux error. Otherwise, the returned Sed's flux error is the standard deviation of flux values in each bin.
 
     Examples
     --------
@@ -1596,6 +1594,7 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
     - If logbin=True, the binsize should be entered in logspace. E.g. if 1,000 < x < 100,000 (or 3.0 < log10(x) < 5.0), and you wish to bin the spectral axis evenly in logspace, choosing binsize = 0.1 will produce 20 bins.
     - If the stack's spectral axis ranges over 3 or 4 decades, it is advised to set logbbin = True
     - Assuming ``stacked_sed`` is the return value of ``stack()``, plotting ``stacked_sed.counts`` against ``stacked_sed.x`` gives a histogram of the flux counts per spectral bin.
+    - If there are any points without flux errors, then the ``yerr`` attribute of the stacked SED will be the variance of the fluxes in each bin.
 
     '''
 

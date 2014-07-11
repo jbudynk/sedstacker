@@ -107,6 +107,12 @@ class TestSed(unittest.TestCase):
             total += points.x
         self.assertEqual(total, sum(self._x)*3)
 
+        sed4 = Sed(x=numpy.linspace(1000,10000,num=100),
+                   y=numpy.linspace(1000,10000,num=100),
+                   yerr=numpy.linspace(1000,10000,num=100)*0.01)
+        sed1.add_segment(sed4)
+        self.assertEqual(len(sed1), 112)
+
 
     def test_shift(self):
         
