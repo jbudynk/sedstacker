@@ -85,10 +85,12 @@ class TestStack(unittest.TestCase):
 
         stacksed = sed.stack(aggsed, bin, 'wavg')
 
+        # because there are seds with no y-errors, stack() will
+        # use 'avg' instead of 'wavg'.
         self.assertEqual(stacksed[3].y,aggsed.y[0][3])
-        self.assertEqual(stacksed[3].yerr,sqrt((aggsed.yerr[3][3]**2)*3))
+        self.assertEqual(stacksed[3].yerr,0.0)
         numpy.testing.assert_array_almost_equal(stacksed.y,aggsed.y[0],decimal=6)
-        self.assertEqual(stacksed.counts[0], 3)
+        self.assertEqual(stacksed.counts[0], 6)
 
 
     def test_no_y_errors_avg(self):
@@ -197,14 +199,13 @@ class TestStack(unittest.TestCase):
                                  9023., 12473., 21573.,
                                  36023., 45023., 58023.,
                                  80023., 240023.])
-        control_y = numpy.array([22.1034125039993, 22.217712221553,
-                                 21.8170976479118, 22.253853588191,
-                                 22.3123190723711, 21.875269275475,
-                                 21.3477642276423, 20.422690413162,
-                                 20.0454682080925, 19.502695570217,
-                                 19.2971347785108, 19.044552309142,
-                                 19.105260115607, 17.6489676067281
-                                 ])
+        control_y = numpy.array([23.9516667, 23.498333333,
+                                 23.45166667, 23.071666667,
+                                 22.71166667, 22.414,
+                                 21.97833333, 21.25,
+                                 20.295, 19.61,
+                                 19.36, 19.07833333,
+                                 18.88, 17.565])
 
         numpy.testing.assert_allclose(stacked_seds.x, control_x)
         numpy.testing.assert_allclose(stacked_seds.y, control_y)
@@ -234,15 +235,34 @@ class TestStack(unittest.TestCase):
 
         bin = seg1.x[1] - seg1.x[0]
 
-        def my_average(yarr, yerrarr, counts):
+        def my_average(yarr, yerrarr, nans):
             yout = numpy.average(yarr)
             yerrarr = numpy.average(yerrarr)
+            counts = len(yarr)
             return yout, yerrarr, counts
 
         stacksed = sed.stack(aggsed, bin, my_average)
 
         self.assertEqual(stacksed.counts[0], 3)
         self.assertEqual(stacksed[3].y,aggsed.y[0][3])
+
+
+    def test_stack_one_segment(self):
+        
+        seg1 = sed.Sed(x=numpy.linspace(1000,10000, num=100),
+                       y=numpy.linspace(1000,10000, num=100)*0.001)
+        seg2 = sed.Sed(x=numpy.linspace(1000,10000, num=100),
+                       y=numpy.linspace(1000,10000, num=100)*0.001)
+        seg1.add_segment(seg2)
+
+        print 'i added the segment!'
+        
+        bin = seg1.x[1] - seg1.x[0]
+
+        stackedsed = sed.stack([seg1], bin, 'avg')
+
+        self.assertEqual(stackedsed[3].y,seg1[3].y)
+        self.assertEqual(stackedsed.counts[0],2)
 
 
 if __name__ == '__main__':
