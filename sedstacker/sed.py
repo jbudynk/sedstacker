@@ -170,15 +170,9 @@ class Spectrum(Segment):
 
         self.xunit = xunit
         self.yunit = yunit
-
-        if isinstance(z, types.NoneType):
-            self.z = z
-        elif type(z) not in NUMERIC_TYPES:
-            raise InvalidRedshiftError(0)
-        elif z < 0:
-            raise InvalidRedshiftError(1)
-        else:
-            self.z = z
+        self.z = z
+        self.counts = None
+        self.norm_constant = 1.0
 
 
     @property
@@ -260,29 +254,43 @@ class Spectrum(Segment):
 
         Notes
         -----
-        normalize_at_point() takes the average flux within a range of spectral values [x0-dx, x0+dx] centered on x0 as the observed flux at x0.
+        normalize_at_point() takes the average flux within a range of
+        spectral values [x0-dx, x0+dx] centered on x0 as the observed
+        flux at x0.
 
         Parameters
         ----------
         x0 : float, int
-            The spectral coordinate to normalize the SED at. x0 is in Angstroms.
+            The spectral coordinate to normalize the SED at. x0 is in
+            Angstroms.
         y0 : float, int
             The flux value to normalize the SED to.
         dx : float, int
-            The number of spectral points to the left and right of x0, over which the average flux is measured. If no points fall within the range [x0-dx,x=+dx], then OutsideRangeError is raised, and the normalization is aborted.
+            The number of spectral points to the left and right of x0,
+            over which the average flux is measured. If no points fall 
+            within the range [x0-dx,x=+dx], then OutsideRangeError is 
+            raised, and the normalization is aborted.
         norm_operator : int
             operator used for scaling the spectrum to y0.
-                - 0 = *[default]* multiply the flux by the normalization constant
+                - 0 = *[default]* multiply the flux by the normalization 
+                constant
                 - 1 = add the normalization constant to the flux
         correct_flux : bool
-            To correct for flux dimming/brightening due to redshift. Meant for SEDs that were shifted only by wavelength (i.e. the flux was not corrected for the intrinsic dimming/brightening due to redshift). If ``correct_flux = True``, then the flux is corrected so that the integrated flux at the current redshift is equal to that at the original redshift. Default value is False.
+            To correct for flux dimming/brightening due to redshift. 
+            Meant for SEDs that were shifted only by wavelength (i.e. 
+            the flux was not corrected for the intrinsic dimming/brightening 
+            due to redshift). If ``correct_flux = True``, then the flux 
+            is corrected so that the integrated flux at the current redshift 
+            is equal to that at the original redshift. Default value is False.
         z0 : float, int
-            The original redshift of the source. Used only if ``correct_flux = True``.
+            The original redshift of the source. Used only if 
+            ``correct_flux = True``.
 
         Returns
         -------
         norm_spectrum : sedstacker.sed.Spectrum
-            A new Spectrum object of the normalized old Spectrum with attribute `norm_constant`.
+            A new Spectrum object of the normalized old Spectrum with 
+            attribute `norm_constant`.
 
         Raises
         ------
@@ -322,6 +330,25 @@ class Spectrum(Segment):
         dx = numpy.float_(dx)
         flux = numpy.ma.masked_invalid(self.y)
         fluxerr = self.yerr
+#        spec = self.x
+
+#        x0_idx = find_nearest(spec, x0)
+#        idx = (x0_idx-dx, x0_idx+dx)
+#        
+#        if idx[0] < 0 and idx[1] >= spec.size:
+#            raise OutsideRangeError
+#        elif idx[0] < 0:
+#            idx[0] = min(spec)
+#        elif idx[1] >= spec.size:
+#            idx[1] = max(spec)
+        # to print out ranges used in the normalization.
+        # Has no effect on the ranges used.
+#        if (idx[0] < 0) or (idx[1] >= spec.size):
+#            high_lim = min([idx+dx], max(spec))
+#            low_lim = max([idx-dx], min(spec))
+#            logger.warning(' Spectrum does not cover full range used for '+
+#                           'determining normalization constant. Spectral '+
+#                           'range used: [{low}:{high}]'.format(low=repr(low_lim), high=repr(high_lim)))
 
         spec_indices = find_range(self.x, x0-dx, x0+dx+1)
         if spec_indices == (-1, -1):
@@ -338,6 +365,11 @@ class Spectrum(Segment):
         if correct_flux:
             fluxz = correct_flux_(self.x, flux, self.z, z0)
             flux = fluxz
+
+#        try:
+#            avg_flux = numpy.mean(flux[idx[0]:idx[1]])
+#        except FloatingPointError:
+#            avg_flux = flux[idx[0]]
 
         try:
             avg_flux = numpy.mean(flux[spec_indices[0]:spec_indices[1]])
@@ -546,8 +578,8 @@ class Sed(Segment, list):
     def __init__(self, x=[], y=[], yerr=None, xunit=['AA'], yunit=['erg/s/cm**2/AA'], z=None):
         
         self.z = z
-        #self.counts = None
-        #self.norm_constant = None
+        self.counts = None
+        self.norm_constant = 1.0
         
         if len(x) != len(y):
             raise SegmentError('x and y must be of the same length.')
@@ -610,7 +642,7 @@ class Sed(Segment, list):
         #Sets flux-error, yerr. If val is a single number, all fluxerrors are assigned val. If val is an iterable, then each point is assigned the consecutive values in val.
         try:
             assert len(val) == len(self), 'yerr array and y must have same length.'
-            for point, i in enumerate(self):
+            for i, point in enumerate(self):
                 assert type(val[i]) in NUMERIC_TYPES, 'yerr must be of numeric type'
                 point.yerr = val[i]
         except TypeError:
@@ -646,7 +678,7 @@ class Sed(Segment, list):
         if not isinstance(val, types.StringType):
             raise TypeError('val must be a string.')
         for point in self:
-            point.xunit = val
+            point.yunit = val
     @yunit.deleter
     def yunit(self):
         logging.info('Setting yunit to None.')
@@ -811,7 +843,7 @@ class Sed(Segment, list):
             raise ValueError('Unrecognized norm_operator. keyword \'norm_operator\' must be either 0 (for multiply) or 1 (for addition).')
 
         norm_sed = Sed(x=spec, y=norm_flux, yerr=norm_fluxerr, xunit=xunit, yunit=yunit, z=self.z)
-        setattr(norm_sed, 'norm_constant', norm_constant)
+        norm_sed.norm_constant = norm_constant
         # keep attributes of old sed
         _get_setattr(norm_sed,self)
 
@@ -905,10 +937,10 @@ class Sed(Segment, list):
         norm_constant = 1.0/numpy.trapz(abs(sedFluxSlice), sedWavelengthSlice)
         norm_flux = numpy.array(flux*norm_constant)
         norm_fluxerr = numpy.array(fluxerr*norm_constant if fluxerr is not None else None)
+
         norm_segment = Sed(x=spec, y=norm_flux, yerr=norm_fluxerr,
                            xunit=xunit, yunit=yunit, z=self.z)
-
-        setattr(norm_segment, 'norm_constant', norm_constant)
+        norm_segment.norm_constant = norm_constant
         # keep attributes of old sed
         _get_setattr(norm_segment,self)
 
@@ -1108,7 +1140,7 @@ class Sed(Segment, list):
             raise PreExistingFileError(filename)
         else:
             sed = self._toarray()
-            if hasattr(self, 'counts'):
+            if self.counts is not None:
                 segment_arrays = Table({'x':sed[0],
                                         'y':sed[1],
                                         'y_err':sed[2],
@@ -1121,8 +1153,8 @@ class Sed(Segment, list):
                 ascii.write(segment_arrays, filename, names=['x','y','y_err'], comment='#')
 
 
-class AggregateSed(list):
-    ''' A collection of Sed's and/or Spectra to stack. Users can normalize and redshift all the segments in an AggregateSed simultaneously. 
+class Stack(list):
+    ''' A collection of Sed's and/or Spectra to stack. Users can normalize and redshift all the segments in an Stack simultaneously. 
 
     Attributes
     ----------
@@ -1139,11 +1171,11 @@ class AggregateSed(list):
     z : list of float and/or int
         The redshifts of the segments.
     segments : list
-        The sedstacker.sed.Sed and sedstacker.sed.Spectrum objects in the AggregateSed.
+        The sedstacker.sed.Sed and sedstacker.sed.Spectrum objects in the Stack.
 
     Notes
     -----
-    Attributes *x*, *y*, *yerr*, *xunit* and *yunit* are *M x N\ :sub:i\ * arrays, where *M* is the number of Seds/Spectra in the AggregateSed, and N\ :sub:i\ is the number of points in the Sed or Spectrum.
+    Attributes *x*, *y*, *yerr*, *xunit* and *yunit* are *M x N\ :sub:i\ * arrays, where *M* is the number of Seds/Spectra in the Stack, and N\ :sub:i\ is the number of points in the Sed or Spectrum.
 
     '''
     def __init__(self, segments):
@@ -1155,7 +1187,7 @@ class AggregateSed(list):
         self.yerr = []
         self.xunit = []
         self.yunit = []
-        self.z = []
+#        self.z = []
 
         for segment in segments:
             if not isinstance(segment, Segment):
@@ -1166,7 +1198,7 @@ class AggregateSed(list):
                 self.yerr.append(segment.yerr)
                 self.xunit.append(segment.xunit)
                 self.yunit.append(segment.yunit)
-                self.z.append(segment.z)
+#                self.z.append(segment.z)
                 self.append(segment)
 
         # If I want to concentate all the spec and flux arrays:
@@ -1184,11 +1216,11 @@ class AggregateSed(list):
 
     def shift(self, z0, correct_flux=True):
         '''
-        Redshifts the Seds and/or Spectra in the AggregateSed by means of cosmological
+        Redshifts the Seds and/or Spectra in the Stack by means of cosmological
         expansion.
 
         Args:
-            z0 (float, int): Target redshift to shift the AggregateSed to
+            z0 (float, int): Target redshift to shift the Stack to
         
         Kwargs:
             correct_flux (bool): If True, the flux will be corrected for the intrinsic
@@ -1198,23 +1230,23 @@ class AggregateSed(list):
 
         Raises:
             NoRedshift: Raised if a Sed/Spectrum has no redshift. If raised, the segment
-            is excluded from the returned shifted AggregateSed.
-            InvalidRedshiftError: Raised if z0 is not of numeric type Float or Integer, or if z0 is negative. If raised, the segment is excluded from the returned shifted AggregateSed.
+            is excluded from the returned shifted Stack.
+            InvalidRedshiftError: Raised if z0 is not of numeric type Float or Integer, or if z0 is negative. If raised, the segment is excluded from the returned shifted Stack.
         
         Returns:
-            A new AggregateSed object with the redshifted SED.
+            A new Stack object with the redshifted SED.
 
         Ex:
         
-        >>> # group 6 segments into an AggregateSed,
+        >>> # group 6 segments into an Stack,
         >>> # then shift them all to z=1.0.
-        >>> aggsed = AggregateSed([sed1, sed2, sed3, sed4, spec1, spec2])
+        >>> aggsed = Stack([sed1, sed2, sed3, sed4, spec1, spec2])
         >>> aggsed_z1 = aggsed.shift(1)
 
-        If 'sed2' had no redshift (i.e. sed2.z = None) and we shift the AggregateSed, a warning appears, stating the index of the segment that is excluded from the shifted AggregateSed.
+        If 'sed2' had no redshift (i.e. sed2.z = None) and we shift the Stack, a warning appears, stating the index of the segment that is excluded from the shifted Stack.
 
         >>> aggsed_z1 = aggsed.shift(1)
-        WARNING: Excluding AggregateSed[1] from the shifted AggregateSed.
+        WARNING: Excluding Stack[1] from the shifted Stack.
 
         '''
 
@@ -1225,14 +1257,14 @@ class AggregateSed(list):
                 shifted_seg = segment.shift(z0, correct_flux = correct_flux)
                 shifted_segments.append(shifted_seg)
             except NoRedshiftError:
-                logger.warning(' Excluding AggregateSed[%d] from the shifted AggregateSed.' % self.index(segment))
+                logger.warning(' Excluding Stack[%d] from the shifted Stack.' % self.index(segment))
                 pass
 
             except InvalidRedshiftError:
-                logger.warning(' Excluding AggregateSed[%d] from the shifted AggregateSed.' % self.index(segment))
+                logger.warning(' Excluding Stack[%d] from the shifted Stack.' % self.index(segment))
                 pass
 
-        return AggregateSed(shifted_segments)
+        return Stack(shifted_segments)
 
 
     def filter(self, boolean = '>', **kwargs):
@@ -1240,7 +1272,7 @@ class AggregateSed(list):
 
 
     def normalize_at_point(self, x0, y0, norm_operator=0, correct_flux=False, z0=None):
-        '''Normalizes the SEDs such that at spectral coordinate x0, the flux of the SEDs is y0. Uses the parent class :func: normalize_at_point() method (i.e. sedstacker.sed.Sed.normalize_at_point() is used on Sed objects in the AggregateSed, while sedstacker.sed.Spectrum.normalize_at_point() is used on Spectrum objects)
+        '''Normalizes the SEDs such that at spectral coordinate x0, the flux of the SEDs is y0. Uses the parent class :func: normalize_at_point() method (i.e. sedstacker.sed.Sed.normalize_at_point() is used on Sed objects in the Stack, while sedstacker.sed.Spectrum.normalize_at_point() is used on Spectrum objects)
 
         Parameters
         ----------
@@ -1255,44 +1287,44 @@ class AggregateSed(list):
             - 0 = multiply the flux by the normalization constant
             - 1 = add the normalization constant to the flux
         z0 : float or int, optional
-            A list or array of the original redshifts of the sources. The redshifts must be in the same order as the Segments appear in the AggregateSed (i.e. assuming aggsed is an AggregateSed, z0[0] is the original redshift of aggsed[0], z0[1] is the original redshift of aggsed[1], etc.). Used only if correct_flux = True.
+            A list or array of the original redshifts of the sources. The redshifts must be in the same order as the Segments appear in the Stack (i.e. assuming aggsed is an Stack, z0[0] is the original redshift of aggsed[0], z0[1] is the original redshift of aggsed[1], etc.). Used only if correct_flux = True.
 
         Notes
         -----
-        - If a Spectrum's spectral range does not cover point x0, then the segment is excluded from the returned normalized AggregateSed.
-        - If a Spectrum has less than 4 points, then the Sed or Spectrum is excluded from the returned normalized AggregateSed.
+        - If a Spectrum's spectral range does not cover point x0, then the segment is excluded from the returned normalized Stack.
+        - If a Spectrum has less than 4 points, then the Sed or Spectrum is excluded from the returned normalized Stack.
         
         Raises
         ------
         exceptions.ValueError
-            If the length of *z0* does not equal the number of segments in the AggregateSed.
+            If the length of *z0* does not equal the number of segments in the Stack.
 
         Examples
         --------
         Usage is the same as it is for Sed and Spectrum objects. Let's say we have instantiated 6 segments (4 SEDs and 2 spectra) that we want to normalize together:
 
-        >>> # group 6 segments into an AggregateSed,
+        >>> # group 6 segments into an Stack,
         >>> # then normalize them at point (5000 AA, 1 erg/s/cm**2/AA)
         >>> 
-        >>> aggsed = AggregateSed([sed1, sed2, sed3, sed4, spec1, spec2])
+        >>> aggsed = Stack([sed1, sed2, sed3, sed4, spec1, spec2])
         >>> norm_seds = seds.normalize_at_point(5000, 1)
 
-        We can view the normalization constants for each segments in normalized AggregateSed. For example, to view the normalization constant of 'sed2':
+        We can view the normalization constants for each segments in normalized Stack. For example, to view the normalization constant of 'sed2':
 
         >>> norm_seds[1].norm_constant
         0.473225404732254
 
-        If 'sed2' has no data at 5000 Angstroms, 'sed2' will not be normalized and will be exluded from 'norm_seds'. A warning states the index of the segment that is excluded from the shifted AggregateSed.
+        If 'sed2' has no data at 5000 Angstroms, 'sed2' will not be normalized and will be exluded from 'norm_seds'. A warning states the index of the segment that is excluded from the shifted Stack.
 
         >>> norm_seds = seds.normalize_at_point(5000, 1)
-        WARNING: Excluding AggregateSed[1] from the normalized AggregateSed.
+        WARNING: Excluding Stack[1] from the normalized Stack.
 
         '''
 
         if isinstance(z0,(types.FloatType, types.IntType, numpy.float_,numpy.int_,types.NoneType)):
             z0 = [z0]*len(self.segments)
         elif len(z0) != len(self.segments):
-            raise ValueError('Length of z0 does not match the length of AggregateSed.')
+            raise ValueError('Length of z0 does not match the length of Stack.')
 
         norm_segments = []
 
@@ -1304,13 +1336,15 @@ class AggregateSed(list):
                                                       z0=z0[i])
                 norm_segments.append(norm_seg)
             except OutsideRangeError:
-                logger.warning(' Excluding AgggregateSed[%d] from the normalized AggregateSed.' % self.index(segment))
+                logger.warning(' Excluding AgggregateSed[%d] from the normalized Stack.' % self.index(segment))
                 pass
             except SegmentError, e:
-                logger.warning(' Excluding AggregateSed[%d] from the normalized AggregateSed' % self.index(segment))
+                logger.warning(' Excluding Stack[%d] from the normalized Stack' % self.index(segment))
                 pass
 
-        return AggregateSed(norm_segments)
+        norm_segments = Stack(norm_segments)
+
+        return norm_segments
 
 
     def normalize_by_int(self, minWavelength='min', maxWavelength='max', correct_flux=False, z0=None):
@@ -1325,38 +1359,38 @@ class AggregateSed(list):
         correct_flux : bool
             Switch used to correct for SEDs that were shifted to some redshift without taking into account flux brightening/dimming due to redshift
         z0 : array_like, optional
-            A list or array of the original redshifts of the sources. The redshifts must be in the same order as the Segments appear in the AggregateSed (i.e. assuming aggsed is an AggregateSed, ``z0[0]`` is the original redshift of ``aggsed[0]``, ``z0[1]`` is the original redshift of ``aggsed[1]``, etc.). Used only if ``correct_flux = True``.
+            A list or array of the original redshifts of the sources. The redshifts must be in the same order as the Segments appear in the Stack (i.e. assuming aggsed is an Stack, ``z0[0]`` is the original redshift of ``aggsed[0]``, ``z0[1]`` is the original redshift of ``aggsed[1]``, etc.). Used only if ``correct_flux = True``.
 
         Notes
         -----
-        - If a Sed or Spectrum has less than 2 points within minWavelength and maxWavelength, then the Sed or Spectrum is excluded from the returned normalized AggregateSed.
+        - If a Sed or Spectrum has less than 2 points within minWavelength and maxWavelength, then the Sed or Spectrum is excluded from the returned normalized Stack.
 
         Examples
         --------
         Usage is the same as it is for Sed and Spectrum objects. Let's say we have instantiated 6 segments (4 SEDs and 2 spectra) that we want to normalize by the integrated flux at optical wavelengths, 3000 AA to 10,000 AA:
 
-        >>> # group 6 segments into an AggregateSed,
+        >>> # group 6 segments into an Stack,
         >>> # then normalize them together
         >>>
-        >>> aggsed = AggregateSed([sed1, sed2, sed3, sed4, spec1, spec2])
+        >>> aggsed = Stack([sed1, sed2, sed3, sed4, spec1, spec2])
         >>> norm_seds = seds.normalize_by_int(minWavelength=3000, maxWavelength=10000)
 
-        We can view the normalization constants for each segments in normalized AggregateSed. For example, to view the normalization constant of 'sed2':
+        We can view the normalization constants for each segments in normalized Stack. For example, to view the normalization constant of 'sed2':
 
         >>> norm_seds[1].norm_constant
         0.473225404732254
 
-        If 'spec1' has no data within the range (*minWavelength, maxWavelength*), then 'spec1' will not be normalized and will be exluded from 'norm_seds'. A warning states the index of the segment that is excluded from the shifted AggregateSed.
+        If 'spec1' has no data within the range (*minWavelength, maxWavelength*), then 'spec1' will not be normalized and will be exluded from 'norm_seds'. A warning states the index of the segment that is excluded from the shifted Stack.
 
         >>> norm_seds = seds.normalize_by_int(minWavelength=9000, maxWavelength=10000)
-        WARNING: Excluding AggregateSed[4] from the normalized AggregateSed.
+        WARNING: Excluding Stack[4] from the normalized Stack.
 
         '''
 
-        if isinstance(z0,(types.FloatType, types.IntType, numpy.float_,numpy.int_,types.NoneType)):
+        if isinstance(z0, NUMERIC_TYPES+(types.NoneType,)):
             z0 = [z0]*len(self.segments)
         elif len(z0) != len(self.segments):
-            raise ValueError('Length of z0 does not match length of AggregateSed.')
+            raise ValueError('Length of z0 does not match length of Stack.')
 
         norm_segments = []
 
@@ -1366,17 +1400,17 @@ class AggregateSed(list):
                                                     maxWavelength=maxWavelength,
                                                     correct_flux=correct_flux,
                                                     z0 = z0[i])
+                norm_segments.append(norm_seg)
             except SegmentError:
-                logger.warning(' Excluding AggregateSed[%d] from the normalized AggregateSed' % self.index(segment))
+                logger.warning(' Excluding Stack[%d] from the normalized Stack' % self.index(segment))
                 pass
 
-            norm_segments.append(norm_seg)
-
-        return AggregateSed(norm_segments)
+        norm_segments = Stack(norm_segments)
+        return norm_segments
 
 
     def add_segment(self, segment):
-        '''Add a segment to the AggregateSed.
+        '''Add a segment to the Stack.
 
         Parameters
         ----------
@@ -1386,7 +1420,7 @@ class AggregateSed(list):
         Examples
         --------
 
-        >>> seds = AggregateSed([sed1,sed2,sed3,sed4,spec1,spec2])
+        >>> seds = Stack([sed1,sed2,sed3,sed4,spec1,spec2])
         >>> seds.add_segment(spec3)
         >>> len(seds)
         7
@@ -1403,7 +1437,7 @@ class AggregateSed(list):
         if isinstance(segment, Segment):
             self.append(segment)
             self.segments.append(segment)
-            self.z.append(segment.z)
+            #self.z.append(segment.z)
             self.x.append(segment.x)
             self.y.append(segment.y)
             self.yerr.append(segment.yerr)
@@ -1414,7 +1448,7 @@ class AggregateSed(list):
 
 
     def remove_segment(self, segment):
-        '''Remove a segment from the AggregateSed.
+        '''Remove a segment from the Stack.
 
         Parameters
         ----------
@@ -1424,9 +1458,9 @@ class AggregateSed(list):
         Examples
         --------
 
-        Let's say we have instantiated 6 segments (4 SEDs and 2 spectra), then added them to an AggregateSed. We wish to remove the second SED from the AggregateSed.
+        Let's say we have instantiated 6 segments (4 SEDs and 2 spectra), then added them to an Stack. We wish to remove the second SED from the Stack.
 
-        >>> seds = AggregateSed([sed1,sed2,sed3,sed4,spec1,spec2])
+        >>> seds = Stack([sed1,sed2,sed3,sed4,spec1,spec2])
         >>> len(seds)
         6
         >>> # Remove sed2.
@@ -1443,16 +1477,16 @@ class AggregateSed(list):
         self.yerr.pop(index)
         self.xunit.pop(index)
         self.yunit.pop(index)
-        self.z.pop(index)
+        #self.z.pop(index)
 
         self.remove(segment)
         self.segments.remove(segment)
 
 
     def write(self, filename, xunit='AA', yunit='erg/s/cm**2/AA', fmt='ascii'):
-        '''Write an AggregateSed to file.
+        '''Write an Stack to file.
 
-        The Seds and Spectra are written to file one after the other, in the order they are indexed in the AggregateSed.
+        The Seds and Spectra are written to file one after the other, in the order they are indexed in the Stack.
 
         Parameters
         ----------
@@ -1463,9 +1497,9 @@ class AggregateSed(list):
 
         Examples
         --------
-        Let's say we have instantiated 6 segments (4 SEDs and 2 spectra), then added them to an AggregateSed. We wish to write the data to an ASCII file:
+        Let's say we have instantiated 6 segments (4 SEDs and 2 spectra), then added them to an Stack. We wish to write the data to an ASCII file:
 
-        >>> seds = AggregateSed([sed1,sed2,sed3,sed4,spec1,spec2])
+        >>> seds = Stack([sed1,sed2,sed3,sed4,spec1,spec2])
         >>> seds.write('my_data_directory/sed_data.txt')
         >>> more my_data_directory/sed_data.txt
         x y
@@ -1499,7 +1533,7 @@ class AggregateSed(list):
                 segment_x.extend(self.x[i])
                 segment_y.extend(self.y[i])
                 segment_yerr.extend(self.yerr[i])
-                if hasattr(self.segments[i], 'counts'):
+                if self.segments[i].counts is not None:
                     counts.extend(numpy.array(self.segments[i].counts, dtype=numpy.int_))
                 else:
                     counts.extend(numpy.array(self.x[i])*numpy.nan) #numpy.zeros(self.x[i].size))
@@ -1515,13 +1549,234 @@ class AggregateSed(list):
                 ascii.write(segment_arrays, filename, names=['x','y','y_err','counts'], comment='#')
 
 
+class AggregateSed(Stack):
+
+    """ An Aggregate SED in the sense of Iris. Each Sed in Iris is an
+    aggregation of different Segments representing the same astrophysical
+    object. This class lets users differentiate between Segments, but shifts
+    and normalizes the Segments as one, joined Segment.
+
+    The redshift of each segment is not considered. Only the redshift of the
+    AggregateSed object is used for red/blue-shifting (i.e., if aggsed is an AggregateSed
+    object, use aggsed.z to access the redshift of the Segments inside aggsed.
+
+    Notes
+    -----
+    ISSUES:
+    - all methods turn Segments into Sed objects. Need to make sure
+    Spectra stay as Spectra.
+    - Need to deal with units at some point
+
+    """
+
+    def __init__(self, segments, z=None):
+        Stack.__init__(self, segments)
+        self.norm_constant = 1.0
+        self.z = z
+
+    @property
+    def z(self):
+        return self._z
+    @z.setter
+    def z(self, val):
+        if isinstance(val, types.NoneType):
+            self._z = val
+        elif type(val) not in NUMERIC_TYPES:
+            raise InvalidRedshiftError(0)
+        elif val < 0:
+            raise InvalidRedshiftError(1)
+        else:
+            self._z = numpy.float_(val)
+            #for segment in self:
+            #    segment.z = numpy.float_(val)
+    @z.deleter
+    def z(self):
+        logging.info('Setting z to None.')
+        self._z = None
+
+
+    def _flatten(self):
+        x = numpy.array([val for subl in self.x for val in subl])
+        y = numpy.array([val for subl in self.y for val in subl])
+        yerr = numpy.array([val for subl in self.yerr for val in subl])
+
+        return x, y, yerr
+
+
+    def _sorts(self):
+        x, y, yerr = self._flatten()
+        points = []
+        for i, point in enumerate(x):
+            points.append([x[i], y[i], yerr[i]])
+        points = zip(*sorted(points))
+        x = numpy.array(points[0])
+        y = numpy.array(points[1])
+        yerr = numpy.array(points[2])
+        
+        return x, y, yerr
+
+
+    def shift(self, z0, correct_flux=True):
+        spec, flux, fluxerr = self._sorts()
+
+        if correct_flux:
+           z_tot_flux, z0_tot_flux = shift(spec, flux, self.z, z0, norms=True)
+            
+        shifted_aggsed = AggregateSed([], z=z0)
+        for segment in self:
+            x = (1 + z0) * segment.x / (1+self.z)
+            yerr = segment.yerr
+            if correct_flux:
+                y = segment.y * z_tot_flux / z0_tot_flux
+            else:
+                y = segment.y
+
+            seg = Sed(x=x, y=y, yerr=yerr, 
+                      z=z0
+                      )
+            shifted_aggsed.add_segment(seg)
+
+        shifted_aggsed.z = z0
+            
+        # keep attributes of old sed
+        _get_setattr(shifted_aggsed, self)
+
+        return shifted_aggsed
+
+
+    def normalize_by_int(self, minWavelength='min', maxWavelength='max', correct_flux=False, z0=None):
+        spec, flux, fluxerr = self._sorts()
+        flux = numpy.ma.masked_invalid(flux)
+        fluxerr = numpy.ma.masked_invalid(fluxerr)
+
+        if minWavelength == 'min':
+            minWavelength=spec.min()
+        if maxWavelength == 'max':
+            maxWavelength=spec.max()
+
+        lowCut = numpy.greater_equal(spec, minWavelength)
+        highCut = numpy.less_equal(spec, maxWavelength)
+        totalCut = numpy.logical_and(lowCut, highCut)
+        sedWavelengthSlice = spec[totalCut]
+        
+        if len(sedWavelengthSlice) < 2:
+            raise SegmentError('AggregateSed must have at least 2 points between minWavelength and maxWavelength.')
+
+        if correct_flux:
+            fluxz = correct_flux_(spec, flux, self.z, z0)
+            flux = fluxz
+
+        sedFluxSlice = flux[totalCut]
+        norm_constant = 1.0/numpy.trapz(abs(sedFluxSlice), sedWavelengthSlice)
+
+        norm_aggsed = AggregateSed([], z=self.z)
+        for segment in self:
+            x = segment.x
+            y = segment.y*norm_constant
+            yerr = segment.yerr*norm_constant if fluxerr is not None else None
+
+            seg = Sed(x=x, y=y, yerr=yerr, 
+                      z=self.z
+                      )
+            norm_aggsed.add_segment(seg)
+
+        norm_aggsed.norm_constant = norm_constant
+        # keep attributes of old sed
+        _get_setattr(norm_aggsed,self)
+
+        return norm_aggsed
+
+
+    def normalize_at_point(self, x0, y0, norm_operator=0, dx=None, correct_flux=False, z0=None):
+        spec, flux, fluxerr = self._sorts()
+
+        if correct_flux:
+            fluxz = correct_flux_(spec, flux, self.z, z0)
+            flux = fluxz  
+
+        # User decides if they want to average the flux of points between
+        # x0-dx and x0+dx (kwarg dx=NUMBER), or if they want to use the 
+        # flux of the nearest neighbor (kwarg dx=None)
+        if isinstance(dx, types.NoneType):
+            interp_self = calc.fast_nearest_interp([x0], spec, flux)
+            flux_at_x0 = numpy.float_(interp_self)
+        else:
+            x0_idx = find_nearest(spec, x0)
+            idx = (x0_idx-dx, x0_idx+dx)
+
+            if idx[0] < 0 and idx[1] >= spec.size:
+                raise OutsideRangeError
+            elif idx[0] < 0:
+                idx[0] = min(spec)
+            elif idx[1] >= spec.size:
+                idx[1] = max(spec)
+            # to print out ranges used in the normalization.
+            # Has no effect on the ranges used.
+            if (idx[0] < 0) or (idx[1] >= spec.size):
+                high_lim = min(spec[idx+dx], max(spec))
+                low_lim = max(spec[idx-dx], min(spec))
+                logger.warning(' Spectrum does not cover full range used for '+
+                               'determining normalization constant. Spectral '+
+                               'range used: [{low}:{high}]'.format(low=repr(low_lim), high=repr(high_lim)))
+#            spec_indices = find_range(spec, x0-dx, x0+dx+1)
+#            if spec_indices == (-1, -1):
+#                raise OutsideRangeError
+#            elif spec_indices[0] == -1:
+#                spec_indices[0] = min(spec)
+#            elif spec_indices[1] == -1:
+#                spec_indices[1] = max(spec)
+            # to print out ranges used in the normalization.
+            # Has no effect on the ranges used.
+#            if (x0-dx < min(spec)) or (x0+dx > max(spec)):
+#                high_lim = min((x0+dx, max(spec)))
+#                low_lim = max((x0-dx, min(spec)))
+#                logger.warning(' Spectrum does not cover full range used for '+
+#                               'determining normalization constant. Spectral '+
+#                               'range used: [{low}:{high}]'.format(low=repr(low_lim), high=repr(high_lim)))
+            try:
+                flux_at_x0 = numpy.mean(flux[idx[0]:idx[1]])
+            except FloatingPointError:
+                flux_at_x0 = flux[idx[0]]
+            
+        if norm_operator == 0:
+            norm_constant = y0 / flux_at_x0
+        elif norm_operator == 1:
+            norm_constant = y0 - flux_at_x0
+        else:
+            raise ValueError('Unrecognized norm_operator. keyword '+
+                             '\'norm_operator\' must be either 0 '+
+                             '(for multiply) or 1 (for addition).')
+
+        norm_aggsed = AggregateSed([], z=self.z)
+        for segment in self:
+            x = segment.x
+            if norm_operator == 0:
+                y = segment.y*norm_constant
+                yerr = segment.yerr*norm_constant if fluxerr is not None else None
+            else:
+                y = segment.y + norm_constant
+                yerr = segment.yerr
+
+            seg = Sed(x=x, y=y, yerr=yerr,
+                      z=self.z
+                      )
+            norm_aggsed.add_segment(seg)
+
+        norm_aggsed.norm_constant = norm_constant
+        # keep attributes of old sed
+        _get_setattr(norm_aggsed,self)
+
+        return norm_aggsed
+        
+
+
 def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_binsize=10, logbin=False):
     '''Rebins the SEDs along the spectral axis into user-defined binsizes, then combines the fluxes in each bin together according to one of four statistics: average, weighted average, addition, or a user-defined function.
 
     Parameters
     ----------
-    aggrseds : array-like of sedstacker.sed.Segment; sedstacker.sed.AggregateSed
-        The AggregateSeds to stack. May be an iterable of AggregateSeds.
+    aggrseds : array-like of sedstacker.sed.Segment; sedstacker.sed.Stack
+        The Segments, AggregateSeds and/or Stacks to combine. May be an iterable of Stacks.
     binsize : float or int
         numerical value to bin the spectral axis by. The fluxes within each bin are combined according to the statistic argument. binsize is also the resolution of the stacked SED.
     statistic : str or func
@@ -1566,7 +1821,7 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
     Returns
     -------
     sedstacker.sed.Sed
-        SED with attribute 'count'. Attributes z, xunit and yunit are taken from the first Segment in the list.
+        SED with attribute 'count'. Attributes z, xunit and yunit are taken from the first Segment or AggregateSed in the list.
             counts - number of flux values combined per binsize.
             stack() calculates the error of the combined fluxes for each bin. If all points in the input SEDs have flux errors associated to them, then ``stack()`` returns the square of the sum of the errors in quadrature as the flux error. Otherwise, the returned Sed's flux error is the standard deviation of flux values in each bin.
 
@@ -1617,14 +1872,9 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
     giant_fluxerr = numpy.array([])
 
     for i, sed in enumerate(aggrseds):
-        try:
-            giant_spec = numpy.append(giant_spec, sed.x)
-            giant_flux = numpy.append(giant_flux, sed.y)
-            giant_fluxerr = numpy.append(giant_fluxerr, sed.yerr)
-        except AttributeError:
-            giant_spec = numpy.append(giant_spec, sed[i].x)
-            giant_flux = numpy.append(giant_flux, sed[i].y)
-            giant_fluxerr = numpy.append(giant_fluxerr, sed[i].yerr)
+        giant_spec = numpy.append(giant_spec, sed.x)
+        giant_flux = numpy.append(giant_flux, sed.y)
+        giant_fluxerr = numpy.append(giant_fluxerr, sed.yerr)
 
     xarr = calc.big_spec(giant_spec, binsize, logbin)
     start = time.clock()
@@ -1632,7 +1882,6 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
                                              statistic, binsize, fill,
                                              giant_fluxerr, logbin=logbin)
     end = time.clock()
-    # print end - start, 'stack() time'
     # take first entry of xunit, yunit and z from the aggregate SED
     # for the same attributes in the stacked SED
     xunit = [aggrseds[0].xunit[0]]*xarr.size
@@ -1652,9 +1901,7 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
     stacked_sed = Sed(x=xarr, y=yarr, yerr=yerrarr,
                       xunit=xunit, yunit=yunit, z=z)
 
-    setattr(stacked_sed, 'counts', counts)
-
-
+    stacked_sed.counts = counts
 
     return stacked_sed
 
@@ -1702,7 +1949,7 @@ def create_from_points(points, z=None):
     return sed
 
 
-def shift(spec, flux, z, z0):
+def shift(spec, flux, z, z0, norms=False):
     '''Redshift spectral/SED data.
 
     Parameters
@@ -1715,6 +1962,9 @@ def shift(spec, flux, z, z0):
         Observed redshift of the SED/spectrum
     z0 : float or int
         Target redshift to shift the SED/spectrum to
+    norms : bool
+        If True, shift returns a tuple of the integrated flux of the SED at 
+        redshift z and and redshift z0.
 
     Returns
     -------
@@ -1744,7 +1994,10 @@ def shift(spec, flux, z, z0):
     
     flux_z0 = flux*z_total_flux/z0_total_flux
     
-    return numpy.array(spec_z0), numpy.array(flux_z0)
+    if norms == False:
+        return numpy.array(spec_z0), numpy.array(flux_z0)
+    else:
+        return z_total_flux, z0_total_flux
 
 
 def correct_flux_(spec, flux, z, z0):
@@ -1767,8 +2020,12 @@ def find_range(array, a, b):
     else:
         return [start-1, end]
 
+def find_nearest(a, a0):
+    return numpy.abs(a - a0).argmin()
+
 
 def _get_setattr(new_object, old_object):
     for key in old_object.__dict__:
         if key not in new_object.__dict__:
             setattr(new_object, key, old_object.__dict__[key])
+

@@ -134,8 +134,7 @@ class TestLoadCat(unittest.TestCase):
                       }
         aggsed = io.load_cat(test_directory+"phot-cat-mags.ascii", column_map)
 
-        self.assertEqual(aggsed.z[0], 0.668)
-        self.assertEqual(aggsed.z[2], 0.529)
+        self.assertEqual(aggsed[2].z, 0.529)
         self.assertEqual(aggsed[0].z, 0.668)
         self.assertEqual(aggsed[0].id, 2051)
 
