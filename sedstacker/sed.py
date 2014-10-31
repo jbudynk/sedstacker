@@ -1146,7 +1146,8 @@ class Sed(Segment, list):
                                         'y_err':sed[2],
                                         'counts':self.counts},
                                        names=['x','y','y_err','counts'],
-                                       dtypes=('f10','f10','f10','i5'))
+                                       dtype=('f10','f10','f10','i5')
+                                       )
                 ascii.write(segment_arrays, filename, comment='#', names=['x','y','y_err', 'counts'])
             else:
                 segment_arrays = [sed[0],sed[1],sed[2]]

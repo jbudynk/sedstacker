@@ -362,7 +362,8 @@ def load_cat(filename, column_map, fmt='ascii', **kwargs):
     try:
         catalog = ascii.read(filename,
                              format='commented_header',
-                             header_start = -1)
+                             header_start = -1,
+                             data_start = 0)
 
     # catch unequal lengths of table columns or rows
     except InconsistentTableError:
