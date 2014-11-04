@@ -1337,7 +1337,7 @@ class Stack(list):
                                                       z0=z0[i])
                 norm_segments.append(norm_seg)
             except OutsideRangeError:
-                logger.warning(' Excluding AgggregateSed[%d] from the normalized Stack.' % self.index(segment))
+                logger.warning(' Excluding Stack[%d] from the normalized Stack.' % self.index(segment))
                 pass
             except SegmentError, e:
                 logger.warning(' Excluding Stack[%d] from the normalized Stack' % self.index(segment))
