@@ -10,7 +10,8 @@ from astropy.table import Table
 
 from sedstacker import calc
 from sedstacker.config import NUMERIC_TYPES
-from sedstacker.exceptions import NoRedshiftError, InvalidRedshiftError, SegmentError, OutsideRangeError, NotASegmentError, PreExistingFileError
+from sedstacker.exceptions import NoRedshiftError, InvalidRedshiftError, SegmentError, OutsideRangeError, NotASegmentError, PreExistingFileError, \
+    BadRangesError
 import time
 
 
@@ -234,6 +235,13 @@ class Spectrum(Segment):
 
         '''
 
+        if isinstance(self.z, types.NoneType):
+            raise NoRedshiftError
+        if (not type(z0) in NUMERIC_TYPES) or (not type(self.z) in NUMERIC_TYPES):
+            raise InvalidRedshiftError(0)
+        if z0 < 0.0 or self.z < 0.0:
+            raise InvalidRedshiftError(1)
+
         if correct_flux:
             spec_z0, flux_z0 = shift(self.x, self.y, self.z, z0)
         else:
@@ -453,6 +461,10 @@ class Spectrum(Segment):
             minWavelength=self.x.min()
         if maxWavelength == 'max':
             maxWavelength=self.x.max()
+
+        # Check that minWavelength is shorter than maxWavelength
+        if minWavelength >=maxWavelength:
+            raise BadRangesError("The min wavelength must be shorter than the max wavelength.")
 
         lowCut = numpy.greater(self.x, minWavelength)
         highCut = numpy.less(self.x, maxWavelength)
@@ -742,6 +754,13 @@ class Sed(Segment, list):
 
         '''
 
+        if isinstance(self.z, types.NoneType):
+            raise NoRedshiftError
+        if (not type(z0) in NUMERIC_TYPES) or (not type(self.z) in NUMERIC_TYPES):
+            raise InvalidRedshiftError(0)
+        if z0 < 0.0 or self.z < 0.0:
+            raise InvalidRedshiftError(1)
+
         if correct_flux:
             spec_z0, flux_z0 = shift(self.x, self.y, self.z, z0)
         else:
@@ -920,6 +939,10 @@ class Sed(Segment, list):
             minWavelength=spec.min()
         if maxWavelength == 'max':
             maxWavelength=spec.max()
+
+        # Check that minWavelength is shorter than maxWavelength
+        if minWavelength >=maxWavelength:
+            raise ValueError("The min wavelength must be shorter than the max wavelength.")
 
         lowCut = numpy.greater_equal(spec, minWavelength)
         highCut = numpy.less_equal(spec, maxWavelength)

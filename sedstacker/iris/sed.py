@@ -147,6 +147,22 @@ class IrisStack(Stack):
 
         return norm_stack
 
+    def shift(self, z0, correct_flux=True):
+
+        shifted_segments = []
+
+        for i, segment in enumerate(self.segments):
+            try:
+                shifted_segment = segment.shift(z0, correct_flux=correct_flux)
+            except NoRedshiftError:
+                logger.warning(' One or more SEDs do not have an assigned redshift. These SEDs have not been shifted.')
+                shifted_segment = segment
+            shifted_segments.append(shifted_segment)
+
+        shifted_stack = Stack(shifted_segments)
+
+        return shifted_stack
+
 
 class IrisSed(Sed):
 

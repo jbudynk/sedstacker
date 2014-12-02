@@ -65,6 +65,18 @@ class TestSegment(unittest.TestCase):
         self.assertEqual(norm_sed[2].y, flux[2])
 
 
+    def test_normalize_by_int_bad_ranges(self):
+        sed = Sed(x=self._x, y=self._y, yerr=self._yerr,
+                  xunit=self._xunit, yunit=self._yunit,
+                  z=self._z)
+        self.assertRaises(sed.normalize_by_int, minWavelength=5000.0, maxWavelength=4000.0)
+
+        sed = Spectrum(x=self._x, y=self._y, yerr=self._yerr,
+                       xunit=self._xunit, yunit=self._yunit,
+                       z=self._z)
+        self.assertRaises(sed.normalize_by_int, minWavelength=5000.0, maxWavelength=4000.0)
+
+
     def test_norm_at_point_spectrum1(self):
         
         spectrum = Spectrum(x = numpy.linspace(3000.0, 10000.0, num=10000),
