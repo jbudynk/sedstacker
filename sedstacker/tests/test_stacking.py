@@ -254,8 +254,6 @@ class TestStack(unittest.TestCase):
         seg2 = sed.Sed(x=numpy.linspace(1000,10000, num=100),
                        y=numpy.linspace(1000,10000, num=100)*0.001)
         seg1.add_segment(seg2)
-
-        print 'i added the segment!'
         
         bin = seg1.x[1] - seg1.x[0]
 
