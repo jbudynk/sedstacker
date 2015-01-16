@@ -191,10 +191,22 @@ class IrisSed(Sed):
             point.y = point.y - other
         return self
 
+    def _sort(self):
+        x, y, yerr = self.x, self.y, self.yerr
+        points = []
+        for i, point in enumerate(x):
+            points.append([x[i], y[i], yerr[i]])
+        points = zip(*sorted(points))
+        x = numpy.array(points[0])
+        y = numpy.array(points[1])
+        yerr = numpy.array(points[2])
+
+        return x, y, yerr
+
     def normalize_by_int(self, minWavelength='min', maxWavelength='max', 
                          y0=1.0, norm_operator=0, correct_flux=False, z0=None):
-        
-        spec = self.x
+
+        spec, flux, fluxerr = self._sort()
         flux = numpy.ma.masked_invalid(self.y)
         fluxerr = numpy.ma.masked_invalid(self.yerr)
         xunit = self.xunit
@@ -241,10 +253,8 @@ class IrisSed(Sed):
 
     
     def normalize_at_point(self, x0, y0, norm_operator=0, correct_flux=False, z0=None):
-        
-        spec = self.x
-        flux = self.y
-        fluxerr = self.yerr
+
+        spec, flux, fluxerr = self._sort()
         xunit = self.xunit
         yunit = self.yunit
 
