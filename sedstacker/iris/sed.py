@@ -225,8 +225,8 @@ class IrisSed(Sed):
                          y0=1.0, norm_operator=0, correct_flux=False, z0=None):
 
         spec, flux, fluxerr = self._sort()
-        flux = numpy.ma.masked_invalid(self.y)
-        fluxerr = numpy.ma.masked_invalid(self.yerr)
+        flux = numpy.ma.masked_invalid(flux)
+        fluxerr = numpy.ma.masked_invalid(fluxerr)
         xunit = self.xunit
         yunit = self.yunit
 
