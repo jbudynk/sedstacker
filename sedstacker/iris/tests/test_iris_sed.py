@@ -99,11 +99,11 @@ class TestIrisSedStacker(unittest.TestCase):
 
     def test_redshift_no_z(self):
 
-        sed1 = IrisSed(x=self.x,y=self.y,yerr=self.yerr)
-        sed2 = IrisSed(x=numpy.array([2,4,5,8,10]), y=numpy.arange(5)+1.0, yerr=numpy.arange(5)+1.0*0.1)
+        sed1 = IrisSed(x=self.x,y=self.y,yerr=self.yerr, id='sed1')
+        sed2 = IrisSed(x=numpy.array([2,4,5,8,10]), y=numpy.arange(5)+1.0, yerr=numpy.arange(5)+1.0*0.1, id='sed2')
         y = numpy.array([5.0, 15.0, 7.0, 4.5, 13.5, 10.5])
         x = numpy.array([0.5, 1.5, 3.0, 5.0, 10.5, 21.0])
-        sed3 = IrisSed(x=x, y=y, yerr=y*0.1)
+        sed3 = IrisSed(x=x, y=y, yerr=y*0.1, id='sed3')
 
         stack = IrisStack([sed1, sed2, sed3])
 
@@ -112,4 +112,24 @@ class TestIrisSedStacker(unittest.TestCase):
         self.assertEqual(len(shifted_stack.segments), 3)
         self.assertRaises((InvalidRedshiftError, NoRedshiftError), sed1.shift, -5.0)
 
-        
+        self.assertEqual(shifted_stack.excluded, ['sed1', 'sed2', 'sed3'])
+
+
+    def test_outside_norm_ranges(self):
+
+        sed1 = IrisSed(x=[1,2,3,4,5], y=[1,2,3,4,5], id='sed1')
+        sed2 = IrisSed(x=[10,20,30,40], y=[1,2,3,4], id='sed2')
+
+        stack = IrisStack([sed1, sed2])
+
+        norm_stack = stack.normalize_by_int(minWavelength=2, maxWavelength=9)
+
+        self.assertEqual(norm_stack.excluded[0], 'sed2')
+
+        sed3 = IrisSed(x=[20,30,40], y=[1,2,3], id='sed3')
+
+        stack.add_segment(sed3)
+        norm_stack = stack.normalize_by_int(minWavelength=2, maxWavelength=9)
+
+        numpy.testing.assert_array_equal(norm_stack.excluded, ['sed2', 'sed3'])
+        self.assertEqual(len(norm_stack), 3)

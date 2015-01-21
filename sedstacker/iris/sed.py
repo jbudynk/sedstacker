@@ -56,6 +56,7 @@ class IrisStack(Stack):
         else:
             raise ValueError("Statistic must be string")
 
+        excluded = []
         norm_segments = []
         for i, segment in enumerate(self.segments):
             try:
@@ -66,9 +67,19 @@ class IrisStack(Stack):
                                                     correct_flux=correct_flux,
                                                     z0 = z0[i])                
                 norm_segments.append(norm_seg)
-            except SegmentError:
-                logger.warning(' Excluding Stack[%d] from the normalized Stack' % self.index(segment))
-                pass
+            except OutsideRangeError:
+                # logger.warning(' Excluding Stack[%d] from the normalized Stack.' % self.index(segment))
+                logger.warning(' Stack[%(index)d] does not fall within normalization range [%(min)d, %(max)d].'
+                               ' Stack[%(index)d] was not normalized.' %
+                               {"index": self.index(segment), "min": minWavelength, "max": maxWavelength})
+                norm_segments.append(segment)
+                excluded.append(segment.id)
+            except SegmentError, e:
+                # logger.warning(' Excluding Stack[%d] from the normalized Stack' % self.index(segment))
+                logger.warning(' Stack[%(index)d] has less than 2 points within the normalization range.'
+                               ' Stack[%(index)d] was not normalized.' % {"index": self.index(segment)})
+                norm_segments.append(segment)
+                excluded.append(segment.id)
 
         norm_stack = Stack(norm_segments)
         norm_constant = stats(norm_stack)
@@ -85,12 +96,14 @@ class IrisStack(Stack):
                                                         z0 = z0[i])                
                     norm_segments.append(norm_seg)
                 except SegmentError:
-                    logger.warning(' Excluding Stack[%d] from the normalized Stack' % self.index(segment))
-                    pass
+                    norm_segments.append(segment)
+                except OutsideRangeError:
+                    norm_segments.append(segment)
             norm_stack = Stack(norm_segments)
         else:
             pass
 
+        setattr(norm_stack, 'excluded', excluded)
         return norm_stack
 
 
@@ -111,6 +124,7 @@ class IrisStack(Stack):
         else:
             raise ValueError("Statistic must be string")
 
+        excluded = []
         norm_segments = []
         for i, segment in enumerate(self.segments):
             try:
@@ -120,11 +134,11 @@ class IrisStack(Stack):
                                                       z0 = z0[i])                
                 norm_segments.append(norm_seg)
             except OutsideRangeError:
-                logger.warning(' Excluding Stack[%d] from the normalized Stack.' % self.index(segment))
-                pass
-            except SegmentError, e:
-                logger.warning(' Excluding Stack[%d] from the normalized Stack' % self.index(segment))
-                pass
+                logger.warning(' Point (%(x)d, %(y)d) does not fall within spectral range of Stack[%(index)d].'
+                               ' Stack[%(index)d] was not normalized.' %
+                               {"x": x0, "y": y0, "index": self.index(segment)})
+                norm_segments.append(segment)
+                excluded.append(segment.id)
 
         norm_stack = Stack(norm_segments)
         norm_constant = stats(norm_stack)
@@ -138,36 +152,40 @@ class IrisStack(Stack):
                                                           correct_flux=correct_flux,
                                                           z0 = z0[i])                
                     norm_segments.append(norm_seg)
-                except SegmentError:
-                    logger.warning(' Excluding Stack[%d] from the normalized Stack' % self.index(segment))
-                    pass
+                except OutsideRangeError:
+                    norm_segments.append(segment)
             norm_stack = Stack(norm_segments)
         else:
             pass
 
+        setattr(norm_stack, 'excluded', excluded)
         return norm_stack
 
     def shift(self, z0, correct_flux=True):
 
         shifted_segments = []
-
+        excluded = []
         for i, segment in enumerate(self.segments):
             try:
                 shifted_segment = segment.shift(z0, correct_flux=correct_flux)
             except NoRedshiftError:
-                logger.warning(' One or more SEDs do not have an assigned redshift. These SEDs have not been shifted.')
+                logger.warning(' Stack[%(index)d] does not have an assigned redshift. This SED has not been shifted.' %
+                               {"index": self.index(segment)})
+                excluded.append(segment.id)
                 shifted_segment = segment
             shifted_segments.append(shifted_segment)
 
         shifted_stack = Stack(shifted_segments)
 
+        setattr(shifted_stack, 'excluded', excluded)
         return shifted_stack
 
 
 class IrisSed(Sed):
 
-    def __init__(self, x=[], y=[], yerr=None, z=None, xunit=['Angstrom'], yunit=['erg/s/cm2']):
+    def __init__(self, x=[], y=[], yerr=None, z=None, xunit=['Angstrom'], yunit=['erg/s/cm2'], id=None):
         super(IrisSed, self).__init__(x=x, y=y, yerr=yerr, z=z, xunit=xunit, yunit=yunit)
+        self.id = id
 
     def __mul__(self, other):
         for point in self:
@@ -222,6 +240,8 @@ class IrisSed(Sed):
         totalCut = numpy.logical_and(lowCut, highCut)
         sedWavelengthSlice = spec[totalCut]
 
+        if len(sedWavelengthSlice) == 0:
+            raise OutsideRangeError('The normalization range falls outside the spectral range of the Sed.')
         if len(sedWavelengthSlice) < 2:
             raise SegmentError('Sed object must have at least 2 points between minWavelength and maxWavelength.')
 
@@ -258,6 +278,9 @@ class IrisSed(Sed):
         xunit = self.xunit
         yunit = self.yunit
 
+        if x0 < self.x.min() or x0 > self.x.max:
+            raise OutsideRangeError('The point (%d, %d) falls outside the spectral range of the SED.' % x0, y0)
+
         if correct_flux:
             fluxz = correct_flux_(spec, flux, self.z, z0)
             flux = fluxz  
@@ -288,7 +311,10 @@ class IrisSed(Sed):
 def avg_(stack):
     norm2fluxs = []
     for sed in stack:
-        norm2fluxs.append(sed.norm2flux)
+        try:
+            norm2fluxs.append(sed.norm2flux)
+        except AttributeError:
+            pass
 
     norm_constant = numpy.average(norm2fluxs)
     return norm_constant
@@ -297,7 +323,10 @@ def avg_(stack):
 def median_(stack):
     norm2fluxs = []
     for sed in stack:
-        norm2fluxs.append(sed.norm2flux)
+        try:
+            norm2fluxs.append(sed.norm2flux)
+        except AttributeError:
+            pass
 
     norm_constant = numpy.median(norm2fluxs)
     return norm_constant
