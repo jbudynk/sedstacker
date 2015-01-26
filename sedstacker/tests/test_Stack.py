@@ -227,6 +227,25 @@ class TestStack(unittest.TestCase):
         self.assertAlmostEqual(norm_aggsed[3].norm_constant, 0.1)
 
 
+    def test_normalize_by_int_raises_bad_ranges(self):
+        segment1 = Spectrum(x = numpy.arange(1000,10000,10),
+                            y = numpy.arange(1000,10000,10),
+                            yerr=numpy.arange(1000,10000,10)*.01,
+                            z=1.0)
+        segment2 = Sed(x=numpy.arange(1000,10000,500),
+                       y=numpy.arange(1000,10000,500),
+                       yerr=numpy.arange(1000,10000,500)*.01)
+        segment3 = Sed(x=numpy.arange(1000,10000,500),
+                       y=numpy.arange(1000,10000,500),
+                       yerr=numpy.arange(1000,10000,500)*.01,
+                       z = 0.35)
+        segment4 = Spectrum(x = numpy.arange(1000,10000,10),
+                            y = numpy.arange(1000,10000,10),
+                            yerr=numpy.arange(1000,10000,10)*.01,
+                            z=1.0)
+        stack = Stack([segment1, segment2, segment3, segment4])
+        self.assertRaises((BadRangesError, ValueError), stack.normalize_by_int, minWavelength=5000.0, maxWavelength=4000.0)
+
     def test_remove_segment(self):
         
         segment1 = Spectrum(x = numpy.arange(1000,10000,10),

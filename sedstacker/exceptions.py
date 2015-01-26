@@ -111,6 +111,25 @@ class OutsideRangeError(Exception):
         Exception.__init__(self, msg)
 
 
+class BadRangesError(Exception):
+    """
+    Raise if the minWavelength is longer than the maxWavelength when
+    normalizing a Segment by integration.
+
+    Parameters
+    ----------
+    msg : str (optional)
+        Error message. Default is *The min wavelength must be shorter
+        than the max wavelength.*
+
+    """
+
+    msg = ('The min wavelength must be shorter than the max wavelength.')
+
+    def __init__(self, msg=msg):
+        Exception.__init__(self, msg)
+
+
 class PreExistingFileError(Exception):
     """
     When writing data to file, raise if the input file name already exists.
