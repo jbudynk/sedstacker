@@ -103,7 +103,7 @@ def wavg_bin(y_bin, yerr_bin, nans_present):
     else:
         weights = 1.0/yerr_bin**2
         yarr = numpy.average(y_bin, weights=weights)
-        outerr = 1.0/weights.sum()
+        outerr = numpy.std(y_bin)        #outerr = 1.0/weights.sum()
 
     count = len(y_bin)
     
@@ -112,10 +112,11 @@ def wavg_bin(y_bin, yerr_bin, nans_present):
 
 def avg_bin(y_bin, yerr_bin, nans_present):
 
-    if nans_present:
-        outerr = numpy.std(y_bin)
-    else:
-        outerr = numpy.sqrt((yerr_bin**2).sum())/len(yerr_bin)
+    # if nans_present:
+    #     outerr = numpy.std(y_bin)
+    # else:
+    #     outerr = numpy.sqrt((yerr_bin**2).sum())/len(yerr_bin)
+    outerr = numpy.std(y_bin)
     yarr = numpy.mean(y_bin)
     count = len(y_bin)
 
@@ -124,10 +125,11 @@ def avg_bin(y_bin, yerr_bin, nans_present):
 
 def sum_bin(y_bin, yerr_bin, nans_present):
 
-    if nans_present:
-        outerr = numpy.std(y_bin)
-    else:
-        outerr = numpy.sqrt((yerr_bin**2).sum())
+    # if nans_present:
+    #     outerr = numpy.std(y_bin)
+    # else:
+    #     outerr = numpy.sqrt((yerr_bin**2).sum())
+    outerr = numpy.std(y_bin)
     yarr = y_bin.sum()
     count = len(y_bin)
     return yarr, outerr, count
