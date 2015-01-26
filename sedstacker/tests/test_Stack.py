@@ -244,7 +244,7 @@ class TestStack(unittest.TestCase):
                             yerr=numpy.arange(1000,10000,10)*.01,
                             z=1.0)
         stack = Stack([segment1, segment2, segment3, segment4])
-        self.assertRaises(stack.normalize_by_int, minWavelength=5000.0, maxWavelength=4000.0)
+        self.assertRaises((BadRangesError, ValueError), stack.normalize_by_int, minWavelength=5000.0, maxWavelength=4000.0)
 
     def test_remove_segment(self):
         

@@ -5,6 +5,8 @@ import sedstacker
 from sedstacker.exceptions import InvalidRedshiftError, NoRedshiftError
 from sedstacker.iris.sed import IrisStack, IrisSed
 import numpy
+from sedstacker.sed import Stack
+
 
 class TestIrisSedStacker(unittest.TestCase):
 
@@ -113,6 +115,31 @@ class TestIrisSedStacker(unittest.TestCase):
         self.assertRaises((InvalidRedshiftError, NoRedshiftError), sed1.shift, -5.0)
 
         self.assertEqual(shifted_stack.excluded, ['sed1', 'sed2', 'sed3'])
+
+    def test_redshift_correct_flux(self):
+
+        sed1 = IrisSed(x=self.x,y=self.y,yerr=self.yerr, id='sed1', z=0.1)
+        sed2 = IrisSed(x=numpy.array([2,4,5,8,10]), y=numpy.arange(5)+1.0, yerr=numpy.arange(5)+1.0*0.1, id='sed2', z=0.1)
+        y = numpy.array([5.0, 15.0, 7.0, 4.5, 13.5, 10.5])
+        x = numpy.array([0.5, 1.5, 3.0, 5.0, 10.5, 21.0])
+        sed3 = IrisSed(x=x, y=y, yerr=y*0.1, id='sed3', z=0.1)
+
+        iris_stack = IrisStack([sed1, sed2, sed3])
+        shifted_iris_stack = iris_stack.shift(0.0, correct_flux=True)
+
+        sed1 = IrisSed(x=self.x,y=self.y,yerr=self.yerr, z=0.1)
+        sed2 = IrisSed(x=numpy.array([2,4,5,8,10]), y=numpy.arange(5)+1.0, yerr=numpy.arange(5)+1.0*0.1, z=0.2)
+        y = numpy.array([5.0, 15.0, 7.0, 4.5, 13.5, 10.5])
+        x = numpy.array([0.5, 1.5, 3.0, 5.0, 10.5, 21.0])
+        sed3 = IrisSed(x=x, y=y, yerr=y*0.1, z=0.3)
+
+        stack = Stack([sed1, sed2, sed3])
+
+        shifted_stack = stack.shift(0.0, correct_flux=True)
+
+        self.assertEqual(len(shifted_iris_stack.segments), 3)
+        numpy.testing.assert_array_almost_equal(shifted_stack[0].x, shifted_iris_stack[0].x)
+        numpy.testing.assert_array_almost_equal(shifted_stack[0].y, shifted_iris_stack[0].y)
 
 
     def test_outside_norm_ranges(self):

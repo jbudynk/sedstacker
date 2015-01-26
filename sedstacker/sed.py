@@ -719,7 +719,6 @@ class Sed(Segment, list):
         data = Table([self.x, self.y, self.yerr, self.xunit, self.yunit], names=('x','y','yerr','xunit','yunit'))
         return data.__str__()
 
-
     def shift(self, z0, correct_flux=True):
         '''Redshifts the spectrum by means of cosmological expansion.
         
@@ -899,6 +898,8 @@ class Sed(Segment, list):
         ------
         sedstacker.exceptions.SegmentError
             If the Sed has less than two points between *minWavelength* and *maxWavelength*.
+        sedstacker.exceptions.BadRangesError
+            If minWavelength is larger than maxWavelength
 
         Examples
         --------
@@ -942,7 +943,7 @@ class Sed(Segment, list):
 
         # Check that minWavelength is shorter than maxWavelength
         if minWavelength >=maxWavelength:
-            raise ValueError("The min wavelength must be shorter than the max wavelength.")
+            raise BadRangesError("The min wavelength must be shorter than the max wavelength.")
 
         lowCut = numpy.greater_equal(spec, minWavelength)
         highCut = numpy.less_equal(spec, maxWavelength)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import logging
+import warnings
 import numpy
 import types
 
@@ -210,10 +211,9 @@ class IrisSed(Sed):
         return self
 
     def _sort(self):
-        x, y, yerr = self.x, self.y, self.yerr
         points = []
-        for i, point in enumerate(x):
-            points.append([x[i], y[i], yerr[i]])
+        for i, point in enumerate(self.x):
+            points.append([self.x[i], self.y[i], self.yerr[i]])
         points = zip(*sorted(points))
         x = numpy.array(points[0])
         y = numpy.array(points[1])
@@ -223,6 +223,8 @@ class IrisSed(Sed):
 
     def normalize_by_int(self, minWavelength='min', maxWavelength='max', 
                          y0=1.0, norm_operator=0, correct_flux=False, z0=None):
+
+        warnings.simplefilter("ignore", UserWarning)
 
         spec, flux, fluxerr = self._sort()
         flux = numpy.ma.masked_invalid(flux)
@@ -306,6 +308,30 @@ class IrisSed(Sed):
         _get_setattr(norm_sed,self)
 
         return norm_sed
+
+    def shift(self, z0, correct_flux=True):
+
+        spec, flux, fluxerr = self._sort()
+
+        if isinstance(self.z, types.NoneType):
+            raise NoRedshiftError
+        if (not type(z0) in NUMERIC_TYPES) or (not type(self.z) in NUMERIC_TYPES):
+            raise InvalidRedshiftError(0)
+        if z0 < 0.0 or self.z < 0.0:
+            raise InvalidRedshiftError(1)
+
+        if correct_flux:
+            spec_z0, flux_z0 = shift(spec, flux, self.z, z0)
+        else:
+            spec_z0 = (1 + z0) * self.x / (1+self.z)
+            flux_z0 = self.y
+
+        spec = Spectrum(x=spec_z0, y=flux_z0, yerr=fluxerr,
+                        xunit=self.xunit, yunit=self.yunit, z=z0)
+        # keep attributes of old sed
+        _get_setattr(spec,self)
+
+        return spec
 
 
 def avg_(stack):

@@ -2,7 +2,7 @@ import unittest
 import numpy
 from sedstacker.sed import Segment, Sed, Spectrum, correct_flux_, shift, _get_setattr
 from astLib import astSED as astsed
-from sedstacker.exceptions import NoRedshiftError, InvalidRedshiftError
+from sedstacker.exceptions import NoRedshiftError, InvalidRedshiftError, BadRangesError
 
 
 class TestSegment(unittest.TestCase):
@@ -69,12 +69,12 @@ class TestSegment(unittest.TestCase):
         sed = Sed(x=self._x, y=self._y, yerr=self._yerr,
                   xunit=self._xunit, yunit=self._yunit,
                   z=self._z)
-        self.assertRaises(sed.normalize_by_int, minWavelength=5000.0, maxWavelength=4000.0)
+        self.assertRaises(BadRangesError, sed.normalize_by_int, minWavelength=5000.0, maxWavelength=4000.0)
 
         sed = Spectrum(x=self._x, y=self._y, yerr=self._yerr,
                        xunit=self._xunit, yunit=self._yunit,
                        z=self._z)
-        self.assertRaises(sed.normalize_by_int, minWavelength=5000.0, maxWavelength=4000.0)
+        self.assertRaises(BadRangesError, sed.normalize_by_int, minWavelength=5000.0, maxWavelength=4000.0)
 
 
     def test_norm_at_point_spectrum1(self):
