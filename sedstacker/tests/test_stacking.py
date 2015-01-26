@@ -149,7 +149,7 @@ class TestStack(unittest.TestCase):
         stacked_seds = sed.stack(aggsed, bin, 'wavg')
 
         self.assertEqual(stacked_seds.y[3],aggsed[0].y[3])
-        self.assertEqual(stacked_seds.yerr[3],1.0/((1.0/aggsed[3].yerr[3]**2)*6))
+        self.assertEqual(stacked_seds.yerr[3], 0.0)    # variance of identical values is 0.0
         numpy.testing.assert_array_almost_equal(stacked_seds.y[0],aggsed[0].y[0],decimal=6)
 
         self.assertEqual(stacked_seds.counts[0], 6)
