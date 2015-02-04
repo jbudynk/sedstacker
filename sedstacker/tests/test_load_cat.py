@@ -1,3 +1,23 @@
+#!/usr/bin/env python
+#
+#  Copyright (C) 2015  Smithsonian Astrophysical Observatory
+#
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program; if not, write to the Free Software Foundation, Inc.,
+#  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+
 import numpy
 import os.path
 import os
@@ -39,7 +59,7 @@ class TestLoadCat(unittest.TestCase):
         xunits = numpy.array(['micron','micron','micron'])
         yunits = numpy.array(['uJy','uJy','uJy'])
 
-        sed = io.load_cat(test_directory+"gs_irs_sep9_one_source.dat",
+        sed = io.load_cat(test_directory+"one_source.dat",
                           column_map1)
 
         self.assertEqual(type(sed), Sed)
@@ -51,7 +71,7 @@ class TestLoadCat(unittest.TestCase):
                    xunit=xunits,
                    yunit=yunits,
                    z=2.69)
-        sed1.id = 'GS_IRS1'
+        sed1.id = 'num1'
         sed1.ra = '03:32:44.00'
         sed1.dec = '-27:46:35.0'
 
@@ -65,7 +85,7 @@ class TestLoadCat(unittest.TestCase):
 
     def testReadToAggregateSed_simple(self):
 
-        aggsed1 = io.load_cat(test_directory+"gs_irs_sep9_small.dat", column_map1)
+        aggsed1 = io.load_cat(test_directory+"three_sources.dat", column_map1)
 
         xarr = numpy.array([16.0, 24.0, 70.0])
         xunits = numpy.array(['micron','micron','micron'])
@@ -82,8 +102,8 @@ class TestLoadCat(unittest.TestCase):
                    xunit=xunits,
                    yunit=yunits,
                    z=2.69)
-        sed1.id = 'GS_IRS1'
-        sed1.ra = '03:32:44.00'
+        sed1.id = 'num1'
+        sed1.ra = '03:32:00.00'
         sed1.dec = '-27:46:35.0'
 
         sed2 = Sed(x=xarr, 
@@ -91,8 +111,8 @@ class TestLoadCat(unittest.TestCase):
                    yerr=numpy.array([2.8, 6.9, -99.0]),
                    xunit=xunits, yunit=yunits,
                    z=1.10)
-        sed2.id = 'GS_IRS2'
-        sed2.ra = '03:32:34.85'
+        sed2.id = 'num2'
+        sed2.ra = '03:32:00.00'
         sed2.dec = '-27:46:40.0'
 
         sed3 = Sed(x=xarr,
@@ -101,8 +121,8 @@ class TestLoadCat(unittest.TestCase):
                    xunit=xunits,
                    yunit=yunits,
                    z=0.55)
-        sed3.id = 'GS_IRS3'
-        sed3.ra = '03:32:08.66'
+        sed3.id = 'num3'
+        sed3.ra = '03:32:00.00'
         sed3.dec = '-27:47:34.4'
 
         aggsed2 = AggregateSed([sed1, sed2, sed3])
@@ -144,7 +164,7 @@ class TestLoadCat(unittest.TestCase):
 
     
     def test_null_values(self):
-        aggsed = io.load_cat(test_directory+"gs_irs_sep9_small.dat", column_map1)
+        aggsed = io.load_cat(test_directory+"three_sources.dat", column_map1)
         self.assertEqual(len(aggsed[0]), 2)
         self.assertEqual(len(aggsed[1]), 3)
         self.assertEqual(len(aggsed[2]), 3)
@@ -156,7 +176,7 @@ class TestLoadCat(unittest.TestCase):
         column_map = {'s16': (16.0, 'micron', 'uJy', 'ds16'),
                       's24': (24.0, 'micron', 'uJy', None),
                       's70': (70.0, 'micron', 'uJy', 'ds70')}
-        aggsed = io.load_cat(test_directory+"gs_irs_sep9_small.dat", column_map)
+        aggsed = io.load_cat(test_directory+"three_sources.dat", column_map)
         self.assert_(numpy.isnan(aggsed.yerr[1][1]))
         self.failIf(numpy.isnan(aggsed.yerr[2][2]))
 
