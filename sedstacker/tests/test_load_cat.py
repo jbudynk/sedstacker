@@ -25,7 +25,7 @@ import unittest
 import sedstacker
 from sedstacker.sed import Sed, Spectrum, PhotometricPoint, AggregateSed, Segment
 from sedstacker import io
-from sedstacker.exceptions import NonStandardColumnNamesError, NonSupportedFileFormatError 
+from sedstacker.exceptions import NonStandardColumnNamesError, NonSupportedFileFormatError
 
 test_directory = os.path.dirname(sedstacker.__file__)+"/tests/resources/"
 
@@ -53,7 +53,7 @@ class TestLoadCat(unittest.TestCase):
         self.assertRaises(NonSupportedFileFormatError, io.load_cat, test_directory+'3c273.csv', column_map1, fmt='csv')
 
 
-    def testReadToSed(self):
+    def test_read_to_sed(self):
 
         xarr = numpy.array([16.0, 24.0, 70.0])
         xunits = numpy.array(['micron','micron','micron'])
@@ -65,14 +65,14 @@ class TestLoadCat(unittest.TestCase):
         self.assertEqual(type(sed), Sed)
         self.assertAlmostEqual(sed[0].x, xarr[0])
 
-	sed1 = Sed(x=xarr,
+        sed1 = Sed(x=xarr,
                    y=numpy.array([46.1, 104.0, -99.0]),
                    yerr=numpy.array([2.9, 6.2, -99.0]),
                    xunit=xunits,
                    yunit=yunits,
                    z=2.69)
         sed1.id = 'num1'
-        sed1.ra = '03:32:44.00'
+        sed1.ra = '03:32:00.00'
         sed1.dec = '-27:46:35.0'
 
         self.assertEqual(sed.ra, sed1.ra)
@@ -83,7 +83,7 @@ class TestLoadCat(unittest.TestCase):
         self.assertRaises(NonStandardColumnNamesError, io.load_cat, test_directory+'load_cat_bad_column_names.dat', column_map1 )
 
 
-    def testReadToAggregateSed_simple(self):
+    def test_read_to_aggregateSed_simple(self):
 
         aggsed1 = io.load_cat(test_directory+"three_sources.dat", column_map1)
 
@@ -95,8 +95,8 @@ class TestLoadCat(unittest.TestCase):
         self.assertAlmostEqual(aggsed1[0][0].x, xarr[0])
         self.assertAlmostEqual(aggsed1[2][2].y, 2690.0)
         self.assert_(aggsed1.xunit[0][0] == xunits[0])
-        
-	sed1 = Sed(x=xarr,
+
+        sed1 = Sed(x=xarr,
                    y=numpy.array([46.1, 104.0, -99.0]),
                    yerr=numpy.array([2.9, 6.2, -99.0]),
                    xunit=xunits,
@@ -106,7 +106,7 @@ class TestLoadCat(unittest.TestCase):
         sed1.ra = '03:32:00.00'
         sed1.dec = '-27:46:35.0'
 
-        sed2 = Sed(x=xarr, 
+        sed2 = Sed(x=xarr,
                    y=numpy.array([163.1, 115.0, -99.0]),
                    yerr=numpy.array([2.8, 6.9, -99.0]),
                    xunit=xunits, yunit=yunits,
@@ -126,7 +126,7 @@ class TestLoadCat(unittest.TestCase):
         sed3.dec = '-27:47:34.4'
 
         aggsed2 = AggregateSed([sed1, sed2, sed3])
-        
+
         self.failUnless(aggsed1[0][1].x == aggsed2[0][1].x)
         self.assertEqual(aggsed1[0].ra, sed1.ra)
         self.assertEqual(aggsed1[2].id, sed3.id)
@@ -135,7 +135,7 @@ class TestLoadCat(unittest.TestCase):
         self.assertEqual(aggsed1[1][0].xunit, 'micron')
 
 
-    def testReadToAggregateSed_complex(self):
+    def test_read_to_aggregateSed_complex(self):
 
         column_map = {"ucfht":(3823.0,"AA","mag","errU"),
                       "Bsub":(4459.7,"AA","mag","errB"),
@@ -159,10 +159,10 @@ class TestLoadCat(unittest.TestCase):
         self.assertEqual(aggsed[0].id, 2051)
 
 
-    def testIncludeNames(self):
+    def test_include_names(self):
         self.assert_(True, 'Not yet implemented')
 
-    
+
     def test_null_values(self):
         aggsed = io.load_cat(test_directory+"three_sources.dat", column_map1)
         self.assertEqual(len(aggsed[0]), 2)
