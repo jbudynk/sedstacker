@@ -1,2 +1,1 @@
-wheel>=0.22
-astropy>=0.3
+astropy >=0.3, <=0.4.4
