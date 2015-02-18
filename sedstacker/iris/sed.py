@@ -299,7 +299,8 @@ class IrisSed(Sed):
         yunit = self.yunit
 
         if x0 < self.x.min() or x0 > self.x.max:
-            raise OutsideRangeError('The point (%d, %d) falls outside the spectral range of the SED.' % x0, y0)
+            raise OutsideRangeError('The point (%(x)d, %(y)d) falls outside the spectral range of the SED.'
+                                    % {"x": x0, "y": y0})
 
         if correct_flux:
             fluxz = correct_flux_(spec, flux, self.z, z0)
