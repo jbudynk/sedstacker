@@ -26,7 +26,6 @@ from sedstacker.exceptions import InvalidRedshiftError, NoRedshiftError
 from sedstacker.iris.sed import IrisStack, IrisSed
 import numpy
 from sedstacker.sed import Stack
-from sedstacker.io import load_cat
 
 
 class TestIrisSedStacker(unittest.TestCase):

@@ -23,7 +23,6 @@ import sedstacker
 from sedstacker import sed
 from sedstacker.exceptions import *
 from sedstacker import calc
-from sedstacker.io import load_cat
 import numpy
 import os
 from math import sqrt
@@ -192,57 +191,6 @@ class TestStack(unittest.TestCase):
         self.assertEqual(stacked_seds.y[3],aggsed[0].y[3])
         numpy.testing.assert_array_almost_equal(stacked_seds.y[0],aggsed[0].y[0],decimal=6)
         self.assertEqual(stacked_seds.counts[0], 12)
-
-    def test_stack_seds(self):
-
-        aggsed = load_cat(sed_filename, column_map)
-        stacked_seds = sed.stack(aggsed, 50, 'avg')
-        control_x = numpy.array([3823., 4473., 4773.,
-                                 5473., 6273., 7623.,
-                                 9023., 12473., 21573.,
-                                 36023., 45023., 58023.,
-                                 80023., 240023.])
-        control_y = numpy.array([23.9516667, 23.498333333,
-                                 23.45166667, 23.071666667,
-                                 22.71166667, 22.414,
-                                 21.97833333, 21.25,
-                                 20.295, 19.61,
-                                 19.36, 19.07833333,
-                                 18.88, 17.565])
-
-        numpy.testing.assert_allclose(stacked_seds.x, control_x)
-        numpy.testing.assert_allclose(stacked_seds.y, control_y)
-
-        stacked_seds = sed.stack(aggsed, 50, 'wavg')
-        control_x = numpy.array([3823., 4473., 4773.,
-                                 5473., 6273., 7623.,
-                                 9023., 12473., 21573.,
-                                 36023., 45023., 58023.,
-                                 80023., 240023.])
-        control_y = numpy.array([23.9516667, 23.498333333,
-                                 23.45166667, 23.071666667,
-                                 22.71166667, 22.414,
-                                 21.97833333, 21.25,
-                                 20.295, 19.61,
-                                 19.36, 19.07833333,
-                                 18.88, 17.565])
-
-        numpy.testing.assert_allclose(stacked_seds.x, control_x)
-        numpy.testing.assert_allclose(stacked_seds.y, control_y)
-
-
-    def test_log_binning(self):
-
-        aggsed = load_cat(sed_filename, column_map)
-        stacked_seds = sed.stack(aggsed, 0.2, 'avg', logbin=True)
-
-        control_x = 10**numpy.array([3.6,3.8,4.0,4.4,4.6,4.8,5.0,5.4])
-        control_y = numpy.array([23.63388888888888, 22.751176470588234,
-                                 21.614166666666, 20.295,
-                                 19.485, 19.0783333333,
-                                 18.88, 17.565])
-        numpy.testing.assert_allclose(stacked_seds.x, control_x)
-        numpy.testing.assert_allclose(stacked_seds.y, control_y)
 
 
     def test_user_defined_function(self):

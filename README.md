@@ -122,127 +122,15 @@ Then, to combine the SEDs in the Stack, use `sedstacker.sed.stack()`:
     6823.0  22.73   0.0    AA   mag
     8323.0  21.01   0.0    AA   mag
 
-### File I/O
 
-Users can load two types of datasets from file: spectra and photometry catalogs.
-Both file types are ASCII tables, meaning they're composed of white-spaced
-separated columns, with each column having the same number of rows.
-
-A *spectrum file* is a file with at least  two white-space-separated columns:
-one with the spectral coordinates (in wavelength), the other with the corresponding
-flux coordinates. The file may also have a third column with the corresponding
-flux errors. Ex:
-
-    #x            y            yerr
-    2266.1474     0.032388065  1.015389e-4
-    2266.9024    0.0082257072  6.264234e-5
-    2267.6575     0.026719441  1.910421e-4
-    2268.4125     0.029819652  7.046351e-4
-    2269.1676     0.092393999  1.372951e-4
-    2269.9226    0.0045967875  2.348762e-5
-    2270.6777     0.010004328  5.329874e-4
-
-To load a spectrum file with sedstacker:
-
-    >>> from sedstacker import io
-    >>> spectrum = io.load_sed('path/to/file.dat', sed_type='spectrum')
-    >>> print spectrum
-        x          y           yerr
-    --------- ------------ ------------
-    2266.1474  0.032388065 0.0001015389
-    2266.9024 0.0082257072 6.264234e-05
-    2267.6575  0.026719441 0.0001910421
-    2268.4125  0.029819652 0.0007046351
-    2269.1676  0.092393999 0.0001372951
-    2269.9226 0.0045967875 2.348762e-05
-    2270.6777  0.010004328 0.0005329874
-    >>>
-    >>> #print the spectral values
-    >>> print spectrum.x
-    [ 2266.1474  2266.9024  2267.6575  2268.4125  2269.1676  2269.9226
-      2270.6777]
-
-Users can load spectrum files as SEDs or spectra by assigning the keyword argument *sed_type*.
-To store data as a SED object, use "sed":
-
-    >>> sed1 = io.load_sed('data/sed1.txt', sed_type='sed')
-
-To store data as a spectrum, use "spectrum"
-
-    >>> spec1 = io.load_sed('data/spec1.txt', sed_type='spectrum')
-
-Users can assign a redshift to a Sed or Spectrum loaded from file as follows:
-
-    >>> # assign a redshift to a spectrum or SED
-    >>> spectrum.z = 0.12
-
-A *photometry catalog* is a file with whitespace-separated columns, each
-with the same number of rows, where each row represents a unique astronomical
-object. The file must have at least two columns: one with the ID for each object,
-and one with fluxes for a specific spectral value. There can be any number of
-columns in a Photometry Catalog, but columns must have unique names. The last
-line in the commented header is used for the column names. Ex:
-
-    # Photometry data from Bongiorno et al. (2012; DOI: 10.1111/j.1365-2966.2012.22089.x)
-    # AGN in COSMOS field
-    # ID   z   ucfht errU Bsub  errB Vsub  errV gsub  errg
-    2051 0.668 20.43 0.09 20.28 0.09 20.18 0.09 20.18 0.09
-    41   0.962 22.73 0.09 22.38 0.09 21.93 0.09 22.44 0.09
-    164  0.529 21.16 0.09 21.05 0.09 20.84 0.09 21.01 0.09
-
-To load data from a photometry catalog, a dictionary that maps the
-column names to the spectral value, spectral and flux units, and
-flux uncertainties must be provided in the following format:
-
-    >>> column_map = {"ucfht":(3823.0,"AA","mag","errU"),
-                      "Bsub":(4459.7,"AA","mag","errB"),
-                      "Vsub":(5483.8,"AA","mag","errV"),
-                      "gsub":(4779.6,"AA","mag","errg"),
-                      }
-
-Then, load the catalog, which stores the rows in the photometry catalog
-as Sed's in a Stack object:
-
-    >>> seds = io.load_cat('data/seds.cat',
-                           column_map=column_map)
-
-Each row is stored as a SED object; the collection of SEDs are then stored
-as a Stack object (i.e. `seds` is a
-Stack). The other column names in the file are stored as
-attributes for each SED stored in the Stack.
-
-If the catalog contains the redshifts in a column named "*z*", the redshifts will be
-assigned to the SEDs:
-
-    >>> print seds.z
-    [0.668, 0.962, 0.529]
 
 ### Example Use Case
 
 The user has a photometry catalog file of SEDs which she wants to
-categorize by redshift before stacking.
+categorize by redshift before stacking. After loading in the data file through other means (astropy.io, pyfits, etc.),
+the user creates a Stack object from her data, called `seds`.
 
-    >>> from sedstacker.io import load_cat
     >>> from sedstacker.sed import Stack, stack
-    >>>
-    >>> # create the mapping from column fluxes to spectral
-    >>> # coordinates, spectral and flux units, and flux-error values
-    >>> column_map={"ucfht":(3823.0,"AA","mag","errU"),
-                    "Bsub":(4459.7,"AA","mag","errB"),
-              	    "Vsub":(5483.8,"AA","mag","errV"),
-              	    "gsub":(4779.6,"AA","mag","errg"),
-              	    "rsub":(6295.1,"AA","mag","errR"),
-              	    "isub":(7640.8,"AA","mag","errI"),
-              	    "zsub":(9036.9,"AA","mag","errz"),
-              	    "j":(12491.0,"AA","mag","errJ"),
-              	    "Ks":(21590.4,"AA","mag","errK"),
-              	    "irac3.6":(36000.0,"AA","mag","err3.6"),
-              	    "irac4.5":(45000.0,"AA","mag","err4.5"),
-              	    "irac5.8":(58000.0,"AA","mag","err5.8"),
-              	    "irac8.0":(80000.0,"AA","mag","err8.0"),
-              	    "mips24.0":(240000.0,"AA","mag","err24")
-              	   }
-    >>> seds = load_cat('mycatalog.cat', column_map=column_map)
     >>>
     >>> # categorize seds by their redshifts: sources with z < 1.0,
     >>> # and sources with z > 1.0

@@ -25,9 +25,6 @@ import types
 from math import log10
 from bisect import bisect_left, bisect_right
 
-from astropy.io import ascii
-from astropy.table import Table
-
 from sedstacker import calc
 from sedstacker.config import NUMERIC_TYPES
 from sedstacker.exceptions import NoRedshiftError, InvalidRedshiftError, SegmentError, OutsideRangeError, NotASegmentError, PreExistingFileError, \
@@ -213,12 +210,6 @@ class Spectrum(Segment):
     def z(self):
         logging.info('Setting z to None.')
         self._z = None
-
-
-    def __str__(self):
-        # Prints out the spectral, flux, and flux-error data as an AstroPy Table
-        data = Table([self.x, self.y, self.yerr], names=('x','y','yerr'), meta={'z':self.z})
-        return data.__str__()
 
 
     def shift(self, z0, correct_flux=True):
@@ -513,41 +504,6 @@ class Spectrum(Segment):
         return norm_segment
 
 
-    def write(self, filename, fmt='ascii'):
-        '''Write Spectrum to file.
-
-        Parameters
-        ----------
-        filename : str
-            The name of the output file.
-        fmt : str
-            The format for the output file. The default file format is 'ascii'. For release 1.0, only ASCII files will be supported.
-
-        Examples
-        --------
-        >>> # Writing a Spectrum object with no flux errors
-        >>> # (i.e. spectrum.yerr = None)
-        >>> 
-        >>> spectrum.write('my_data_directory/sed_data.txt')
-        >>> more my_data_directory/sed_data.txt
-        x y
-        1941.8629 0.046853197
-        1942.5043 0.059397754
-        1943.1456 0.032893488
-        1943.7870 0.058623008
-        ...            ... 
-        10567.7890 0.046843890
-        10568.4571 0.059888754
-
-        '''
-
-        if os.path.exists(filename):
-            raise PreExistingFileError(filename)
-        else:
-            segment_arrays = [self.x, self.y, self.yerr]
-            ascii.write(segment_arrays, filename, names=['x','y','y_err'], comment='#')
-
-
 class Sed(Segment, list):
     '''Represents a photometric SED from one astronomical object or model.
 
@@ -734,10 +690,6 @@ class Sed(Segment, list):
         logging.info('Setting z to None.')
         self._z = None
 
-
-    def __str__(self):
-        data = Table([self.x, self.y, self.yerr, self.xunit, self.yunit], names=('x','y','yerr','xunit','yunit'))
-        return data.__str__()
 
     def shift(self, z0, correct_flux=True):
         '''Redshifts the spectrum by means of cosmological expansion.
@@ -1154,50 +1106,6 @@ class Sed(Segment, list):
         return sedarray
 
 
-    def write(self, filename, xunit='AA', yunit='erg/s/cm**2/AA', fmt='ascii'):
-        '''Write Sed to file.
-
-        Parameters
-        ----------
-        filename : str
-            The name of the output file.
-        fmt : str
-            The format for the output file. The default file format is 'ascii'. For release 1.0, only ASCII files will be supported.
-
-        Examples
-        --------
-
-        >>> sed.write('my_data_directory/sed_data.txt')
-        >>> more my_data_directory/sed_data.txt
-        x y
-        1941.8629 0.046853197
-        1942.5043 0.059397754
-        1943.1456 0.032893488
-        1943.7870 0.058623008
-        ...            ... 
-        10567.7890 0.046843890
-        10568.4571 0.059888754
-
-        '''
-
-        if os.path.exists(filename):
-            raise PreExistingFileError(filename)
-        else:
-            sed = self._toarray()
-            if self.counts is not None:
-                segment_arrays = Table({'x':sed[0],
-                                        'y':sed[1],
-                                        'y_err':sed[2],
-                                        'counts':self.counts},
-                                       names=['x','y','y_err','counts'],
-                                       dtype=('f10','f10','f10','i5')
-                                       )
-                ascii.write(segment_arrays, filename, comment='#', names=['x','y','y_err', 'counts'])
-            else:
-                segment_arrays = [sed[0],sed[1],sed[2]]
-                ascii.write(segment_arrays, filename, names=['x','y','y_err'], comment='#')
-
-
 class Stack(list):
     ''' A collection of Sed's and/or Spectra to stack. Users can normalize and redshift all the segments in an Stack simultaneously. 
 
@@ -1255,9 +1163,6 @@ class Stack(list):
         #        self.xunit.reshape(1,count)
         #        self.yunit.reshape(1,count)
 
-
-    def __str__(self):
-        pass
 
     def shift(self, z0, correct_flux=True):
         '''
@@ -1526,72 +1431,6 @@ class Stack(list):
 
         self.remove(segment)
         self.segments.remove(segment)
-
-
-    def write(self, filename, xunit='AA', yunit='erg/s/cm**2/AA', fmt='ascii'):
-        '''Write an Stack to file.
-
-        The Seds and Spectra are written to file one after the other, in the order they are indexed in the Stack.
-
-        Parameters
-        ----------
-        filename : str
-            The name of the output file.
-        fmt : str
-            The format for the output file. The default file format is 'ascii'. For release 1.0, only ASCII files will be supported.
-
-        Examples
-        --------
-        Let's say we have instantiated 6 segments (4 SEDs and 2 spectra), then added them to an Stack. We wish to write the data to an ASCII file:
-
-        >>> seds = Stack([sed1,sed2,sed3,sed4,spec1,spec2])
-        >>> seds.write('my_data_directory/sed_data.txt')
-        >>> more my_data_directory/sed_data.txt
-        x y
-        3823.0 0.0424           # first SED
-        4459.7 0.0409
-        5483.8 0.0217
-        4779.6 0.0345
-        ...    
-        80000.0 0.912
-        240000.0 1.245
-        1941.8629 0.046853197   # second SED
-        1942.5043 0.059397754
-        1943.1456 0.032893488
-        1943.7870 0.058623008
-        ...       
-        10567.7890 0.046843890
-        10568.4571 0.059888754
-        ...                    # and so on
-            
-
-        '''
-
-        if os.path.exists(filename):
-            raise PreExistingFileError(filename)
-        else:
-            segment_x = []
-            segment_y = []
-            segment_yerr = []
-            counts = []
-            for i in range(len(self)):
-                segment_x.extend(self.x[i])
-                segment_y.extend(self.y[i])
-                segment_yerr.extend(self.yerr[i])
-                if self.segments[i].counts is not None:
-                    counts.extend(numpy.array(self.segments[i].counts, dtype=numpy.int_))
-                else:
-                    counts.extend(numpy.array(self.x[i])*numpy.nan) #numpy.zeros(self.x[i].size))
-
-            segment_arrays = [numpy.array(segment_x),
-                              numpy.array(segment_y),
-                              numpy.array(segment_yerr),
-                              counts]
-
-            if all(numpy.isnan(count) for count in segment_arrays[3]):
-                ascii.write(segment_arrays[0:3], filename, names=['x','y','y_err'], comment='#')
-            else:
-                ascii.write(segment_arrays, filename, names=['x','y','y_err','counts'], comment='#')
 
 
 class AggregateSed(Stack):
@@ -1903,13 +1742,6 @@ def stack(aggrseds, binsize, statistic, fill='remove', smooth=False, smooth_bins
 
     if type(smooth) not in (types.BooleanType, numpy.bool_):
         raise ValueError('keyword argument smooth must be \'True\' or \'False\'.')
-
-# Haven't implemented units yet, so we only care about the first element in binsize.
-#    if len(binsize) != 2:
-#        raise Exception('Argument binsize must be a tuple:'+
-#                        '(binsize, \'units\')')
-#    if not isinstance(binsize[1], str):
-#        raise Exception('units must be a string recognized by the AstroPy.units package')
 
     # making "giant"/global arrays
     giant_spec = numpy.array([])
