@@ -26,6 +26,7 @@ from sedstacker.exceptions import InvalidRedshiftError, NoRedshiftError
 from sedstacker.iris.sed import IrisStack, IrisSed
 import numpy
 from sedstacker.sed import Stack
+from sedstacker.io import load_cat
 
 
 class TestIrisSedStacker(unittest.TestCase):
@@ -180,3 +181,60 @@ class TestIrisSedStacker(unittest.TestCase):
 
         numpy.testing.assert_array_equal(norm_stack.excluded, ['sed2', 'sed3'])
         self.assertEqual(len(norm_stack), 3)
+
+
+    def test_sort(self):
+
+        # make sure the sorting method works correctly. Values should
+
+        x1 = [1, 3, 2]
+        y1 = [1, 1, 1]
+        yerr1 = [0.1, 0.3, 0.2]
+        x2 = [4, 5, 6]
+        y2 = [2, 2, 2]
+        yerr2 = [0.4, 0.5, 0.6]
+
+        sed1 = IrisSed(x=x1, y=y1, yerr=yerr1)
+        sed2 = IrisSed(x=x2, y=y2, yerr=yerr2)
+
+        numpy.testing.assert_array_equal([1,2,3], sed1.x)
+        numpy.testing.assert_array_almost_equal([.1,.2,.3], sed1.yerr)
+
+
+    def test_redshift_no_correct_flux(self):
+
+        # what the yerrs should be
+        yerr = numpy.array([
+            [0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, numpy.nan, 0.92,],
+            [0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, numpy.nan, 0.09, 0.09, 0.09, 0.09, 0.82,],
+            [0.09, 0.09, 0.09, numpy.nan, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.78,],
+            [0.63, 0.36, 0.44, 0.16, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.81,],
+            [0.11, 0.09, 0.13, 0.13, 0.09, 0.09, 0.09, 0.21, 0.09, 0.09, 0.09, 0.09, 0.09, 0.78,],
+            [0.68, 0.30, 0.35, 0.30, 0.22, 0.25, 0.63, 0.51, 0.14, 0.14, 0.14, 0.14, 0.14, 1.22,]
+        ])
+
+        # make dummy data
+        y = numpy.array([
+            [0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 1.0, 0.92,],
+            [0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 1.0, 0.09, 0.09, 0.09, 0.09, 0.82,],
+            [0.09, 0.09, 0.09, 1.0, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.78,],
+            [0.63, 0.36, 0.44, 0.16, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.09, 0.81,],
+            [0.11, 0.09, 0.13, 0.13, 0.09, 0.09, 0.09, 0.21, 0.09, 0.09, 0.09, 0.09, 0.09, 0.78,],
+            [0.68, 0.30, 0.35, 0.30, 0.22, 0.25, 0.63, 0.51, 0.14, 0.14, 0.14, 0.14, 0.14, 1.22,]
+        ])
+        x = numpy.arange(len(y[0]))
+        x = numpy.array([x, x[0:13], x, x, x, x])
+        z = [1,2,3,4,5,6]
+
+        # populate IrisStack
+        seds = []
+        for i in range(6):
+            seds.append(IrisSed(x=x[i], y=y[i], yerr=yerr[i], z=z[i]))
+        seds = IrisStack(seds)
+
+        # shift the stack without correcting for flux
+        shifted_seds = seds.shift(0, correct_flux=False)
+
+        # The y-errors should be the same before and after the shift
+        for i, sed in enumerate(shifted_seds):
+            numpy.testing.assert_array_almost_equal(yerr[i], sed.yerr)

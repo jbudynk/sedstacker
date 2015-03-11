@@ -34,6 +34,8 @@ logger.addHandler(hndlr)
 class IrisStack(Stack):
 
     def __init__(self, seds):
+        # for i in range(len(seds)):
+        #     seds[i] = IrisSed(x=seds[i].x, y=seds[i].y, yerr=seds[i].yerr, z=seds[i].z)
         super(IrisStack, self).__init__(seds)
 
     def __mul__(self, other):
@@ -205,6 +207,12 @@ class IrisSed(Sed):
     def __init__(self, x=[], y=[], yerr=None, z=None, xunit=['Angstrom'], yunit=['erg/s/cm2'], id=None):
         super(IrisSed, self).__init__(x=x, y=y, yerr=yerr, z=z, xunit=xunit, yunit=yunit)
         self.id = id
+        self._sort()
+
+    # def __init__(self, sed):
+    #     super(IrisSed, self).__init__(x=sed.x, y=sed.y, yerr=sed.yerr, z=sed.z, xunit=sed.xunit, yunit=sed.yunit)
+    #     self.id = id
+    #     self._sort()
 
     def __mul__(self, other):
         for point in self:
@@ -229,22 +237,28 @@ class IrisSed(Sed):
         return self
 
     def _sort(self):
-        points = []
-        for i, point in enumerate(self.x):
-            points.append([self.x[i], self.y[i], self.yerr[i]])
-        points = zip(*sorted(points))
-        x = numpy.array(points[0])
-        y = numpy.array(points[1])
-        yerr = numpy.array(points[2])
+        indices = self.x.argsort()
+        self.x = self.x[indices]
+        self.y = self.y[indices]
+        self.yerr = self.yerr[indices]
 
-        return x, y, yerr
+        # points = []
+        # for i, point in enumerate(self.x):
+        #     points.append([self.x[i], self.y[i], self.yerr[i]])
+        # points = zip(*sorted(points))
+        # x = numpy.array(points[0])
+        # y = numpy.array(points[1])
+        # yerr = numpy.array(points[2])
+
+        # return x, y, yerr
 
     def normalize_by_int(self, minWavelength='min', maxWavelength='max', 
                          y0=1.0, norm_operator=0, correct_flux=False, z0=None):
 
         warnings.simplefilter("ignore", UserWarning)
 
-        spec, flux, fluxerr = self._sort()
+        self._sort()
+        spec, flux, fluxerr = self.x, self.y, self.yerr
         flux = numpy.ma.masked_invalid(flux)
         fluxerr = numpy.ma.masked_invalid(fluxerr)
         xunit = self.xunit
@@ -294,7 +308,8 @@ class IrisSed(Sed):
     
     def normalize_at_point(self, x0, y0, norm_operator=0, correct_flux=False, z0=None):
 
-        spec, flux, fluxerr = self._sort()
+        self._sort()
+        spec, flux, fluxerr = self.x, self.y, self.yerr
         xunit = self.xunit
         yunit = self.yunit
 
@@ -330,7 +345,8 @@ class IrisSed(Sed):
 
     def shift(self, z0, correct_flux=True):
 
-        spec, flux, fluxerr = self._sort()
+        self._sort()
+        spec, flux, fluxerr = self.x, self.y, self.yerr
 
         if isinstance(self.z, types.NoneType):
             raise NoRedshiftError
@@ -345,8 +361,8 @@ class IrisSed(Sed):
             spec_z0 = (1 + z0) * self.x / (1+self.z)
             flux_z0 = self.y
 
-        spec = Spectrum(x=spec_z0, y=flux_z0, yerr=fluxerr,
-                        xunit=self.xunit, yunit=self.yunit, z=z0)
+        spec = IrisSed(x=spec_z0, y=flux_z0, yerr=fluxerr,
+                        xunit=[self.xunit], yunit=[self.yunit], z=z0)
         # keep attributes of old sed
         _get_setattr(spec,self)
 
