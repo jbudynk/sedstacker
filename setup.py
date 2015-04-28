@@ -39,8 +39,6 @@ setup(
     version=sedstacker.__version__,
     license='GNU General Public License v3',
     author='Smithsonian Astrophysical Observatory / Chandra X-Ray Center',
-    requires=['astropy'],
-    install_requires=['astropy>=0.3, <=0.4.4'],
     tests_require=['tox'],
     cmdclass={'test': Tox},
     author_email='jbudynkiewicz@cfa.harvard.edu',

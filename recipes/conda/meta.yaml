@@ -16,7 +16,7 @@ requirements:
 
   build:
    - setuptools
-   - python
+   - python 2.7.*
    - numpy
 
 about:
