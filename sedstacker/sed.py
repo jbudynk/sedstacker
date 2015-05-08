@@ -1,3 +1,23 @@
+#!/usr/bin/env python
+#
+#  Copyright (C) 2015  Smithsonian Astrophysical Observatory
+#
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program; if not, write to the Free Software Foundation, Inc.,
+#  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+
 import logging
 import numpy
 import os.path
@@ -10,7 +30,8 @@ from astropy.table import Table
 
 from sedstacker import calc
 from sedstacker.config import NUMERIC_TYPES
-from sedstacker.exceptions import NoRedshiftError, InvalidRedshiftError, SegmentError, OutsideRangeError, NotASegmentError, PreExistingFileError
+from sedstacker.exceptions import NoRedshiftError, InvalidRedshiftError, SegmentError, OutsideRangeError, NotASegmentError, PreExistingFileError, \
+    BadRangesError
 import time
 
 
@@ -234,6 +255,13 @@ class Spectrum(Segment):
 
         '''
 
+        if isinstance(self.z, types.NoneType):
+            raise NoRedshiftError
+        if (not type(z0) in NUMERIC_TYPES) or (not type(self.z) in NUMERIC_TYPES):
+            raise InvalidRedshiftError(0)
+        if z0 < 0.0 or self.z < 0.0:
+            raise InvalidRedshiftError(1)
+
         if correct_flux:
             spec_z0, flux_z0 = shift(self.x, self.y, self.z, z0)
         else:
@@ -453,6 +481,10 @@ class Spectrum(Segment):
             minWavelength=self.x.min()
         if maxWavelength == 'max':
             maxWavelength=self.x.max()
+
+        # Check that minWavelength is shorter than maxWavelength
+        if minWavelength >=maxWavelength:
+            raise BadRangesError("The min wavelength must be shorter than the max wavelength.")
 
         lowCut = numpy.greater(self.x, minWavelength)
         highCut = numpy.less(self.x, maxWavelength)
@@ -707,7 +739,6 @@ class Sed(Segment, list):
         data = Table([self.x, self.y, self.yerr, self.xunit, self.yunit], names=('x','y','yerr','xunit','yunit'))
         return data.__str__()
 
-
     def shift(self, z0, correct_flux=True):
         '''Redshifts the spectrum by means of cosmological expansion.
         
@@ -741,6 +772,13 @@ class Sed(Segment, list):
         >>> rf_spectrum = sed.shift(0, correct_flux=False)
 
         '''
+
+        if isinstance(self.z, types.NoneType):
+            raise NoRedshiftError
+        if (not type(z0) in NUMERIC_TYPES) or (not type(self.z) in NUMERIC_TYPES):
+            raise InvalidRedshiftError(0)
+        if z0 < 0.0 or self.z < 0.0:
+            raise InvalidRedshiftError(1)
 
         if correct_flux:
             spec_z0, flux_z0 = shift(self.x, self.y, self.z, z0)
@@ -880,6 +918,8 @@ class Sed(Segment, list):
         ------
         sedstacker.exceptions.SegmentError
             If the Sed has less than two points between *minWavelength* and *maxWavelength*.
+        sedstacker.exceptions.BadRangesError
+            If minWavelength is larger than maxWavelength
 
         Examples
         --------
@@ -920,6 +960,10 @@ class Sed(Segment, list):
             minWavelength=spec.min()
         if maxWavelength == 'max':
             maxWavelength=spec.max()
+
+        # Check that minWavelength is shorter than maxWavelength
+        if minWavelength >=maxWavelength:
+            raise BadRangesError("The min wavelength must be shorter than the max wavelength.")
 
         lowCut = numpy.greater_equal(spec, minWavelength)
         highCut = numpy.less_equal(spec, maxWavelength)
@@ -1337,7 +1381,7 @@ class Stack(list):
                                                       z0=z0[i])
                 norm_segments.append(norm_seg)
             except OutsideRangeError:
-                logger.warning(' Excluding AgggregateSed[%d] from the normalized Stack.' % self.index(segment))
+                logger.warning(' Excluding Stack[%d] from the normalized Stack.' % self.index(segment))
                 pass
             except SegmentError, e:
                 logger.warning(' Excluding Stack[%d] from the normalized Stack' % self.index(segment))

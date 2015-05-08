@@ -1,3 +1,23 @@
+#!/usr/bin/env python
+#
+#  Copyright (C) 2015  Smithsonian Astrophysical Observatory
+#
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program; if not, write to the Free Software Foundation, Inc.,
+#  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+
 import numpy
 import unittest
 import warnings
@@ -226,6 +246,25 @@ class TestStack(unittest.TestCase):
         self.assertAlmostEqual(norm_aggsed[2].norm_constant, 0.148148148)
         self.assertAlmostEqual(norm_aggsed[3].norm_constant, 0.1)
 
+
+    def test_normalize_by_int_raises_bad_ranges(self):
+        segment1 = Spectrum(x = numpy.arange(1000,10000,10),
+                            y = numpy.arange(1000,10000,10),
+                            yerr=numpy.arange(1000,10000,10)*.01,
+                            z=1.0)
+        segment2 = Sed(x=numpy.arange(1000,10000,500),
+                       y=numpy.arange(1000,10000,500),
+                       yerr=numpy.arange(1000,10000,500)*.01)
+        segment3 = Sed(x=numpy.arange(1000,10000,500),
+                       y=numpy.arange(1000,10000,500),
+                       yerr=numpy.arange(1000,10000,500)*.01,
+                       z = 0.35)
+        segment4 = Spectrum(x = numpy.arange(1000,10000,10),
+                            y = numpy.arange(1000,10000,10),
+                            yerr=numpy.arange(1000,10000,10)*.01,
+                            z=1.0)
+        stack = Stack([segment1, segment2, segment3, segment4])
+        self.assertRaises((BadRangesError, ValueError), stack.normalize_by_int, minWavelength=5000.0, maxWavelength=4000.0)
 
     def test_remove_segment(self):
         

@@ -1,8 +1,28 @@
+#!/usr/bin/env python
+#
+#  Copyright (C) 2015  Smithsonian Astrophysical Observatory
+#
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program; if not, write to the Free Software Foundation, Inc.,
+#  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+
 import unittest
 import numpy
 from sedstacker.sed import Segment, Sed, Spectrum, correct_flux_, shift, _get_setattr
 from astLib import astSED as astsed
-from sedstacker.exceptions import NoRedshiftError, InvalidRedshiftError
+from sedstacker.exceptions import NoRedshiftError, InvalidRedshiftError, BadRangesError
 
 
 class TestSegment(unittest.TestCase):
@@ -63,6 +83,18 @@ class TestSegment(unittest.TestCase):
 
         self.assertEqual(norm_sed.norm_constant, norm_const)
         self.assertEqual(norm_sed[2].y, flux[2])
+
+
+    def test_normalize_by_int_bad_ranges(self):
+        sed = Sed(x=self._x, y=self._y, yerr=self._yerr,
+                  xunit=self._xunit, yunit=self._yunit,
+                  z=self._z)
+        self.assertRaises(BadRangesError, sed.normalize_by_int, minWavelength=5000.0, maxWavelength=4000.0)
+
+        sed = Spectrum(x=self._x, y=self._y, yerr=self._yerr,
+                       xunit=self._xunit, yunit=self._yunit,
+                       z=self._z)
+        self.assertRaises(BadRangesError, sed.normalize_by_int, minWavelength=5000.0, maxWavelength=4000.0)
 
 
     def test_norm_at_point_spectrum1(self):

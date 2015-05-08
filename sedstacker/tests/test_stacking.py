@@ -1,3 +1,23 @@
+#!/usr/bin/env python
+#
+#  Copyright (C) 2015  Smithsonian Astrophysical Observatory
+#
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program; if not, write to the Free Software Foundation, Inc.,
+#  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+
 import unittest
 import sedstacker
 from sedstacker import sed
@@ -149,7 +169,7 @@ class TestStack(unittest.TestCase):
         stacked_seds = sed.stack(aggsed, bin, 'wavg')
 
         self.assertEqual(stacked_seds.y[3],aggsed[0].y[3])
-        self.assertEqual(stacked_seds.yerr[3],sqrt((aggsed[3].yerr[3]**2)*6))
+        self.assertEqual(stacked_seds.yerr[3], 0.0)    # variance of identical values is 0.0
         numpy.testing.assert_array_almost_equal(stacked_seds.y[0],aggsed[0].y[0],decimal=6)
 
         self.assertEqual(stacked_seds.counts[0], 6)
@@ -254,8 +274,6 @@ class TestStack(unittest.TestCase):
         seg2 = sed.Sed(x=numpy.linspace(1000,10000, num=100),
                        y=numpy.linspace(1000,10000, num=100)*0.001)
         seg1.add_segment(seg2)
-
-        print 'i added the segment!'
         
         bin = seg1.x[1] - seg1.x[0]
 

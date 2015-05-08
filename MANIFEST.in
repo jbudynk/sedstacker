@@ -1,3 +1,9 @@
 include README.md
 include HISTORY.rst
 include requirements.txt
+include sedstacker/tests/*.py
+include sedstacker/tests/resources/*.*
+include sedstacker/tests/resources/spectra/*.*
+include sedstacker/tests/resources/test_load_sed/*.*
+include sedstacker/tests/resources/write/copy/*.*
+include sedstacker/iris/tests/*.py

@@ -1,3 +1,23 @@
+#!/usr/bin/env python
+#
+#  Copyright (C) 2015  Smithsonian Astrophysical Observatory
+#
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License along
+#  with this program; if not, write to the Free Software Foundation, Inc.,
+#  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+
 import numpy
 import types
 import warnings
@@ -103,7 +123,7 @@ def wavg_bin(y_bin, yerr_bin, nans_present):
     else:
         weights = 1.0/yerr_bin**2
         yarr = numpy.average(y_bin, weights=weights)
-        outerr = numpy.sqrt((yerr_bin**2).sum())
+        outerr = numpy.std(y_bin)        #outerr = 1.0/weights.sum()
 
     count = len(y_bin)
     
@@ -112,10 +132,11 @@ def wavg_bin(y_bin, yerr_bin, nans_present):
 
 def avg_bin(y_bin, yerr_bin, nans_present):
 
-    if nans_present:
-        outerr = numpy.std(y_bin)
-    else:
-        outerr = numpy.sqrt((yerr_bin**2).sum())
+    # if nans_present:
+    #     outerr = numpy.std(y_bin)
+    # else:
+    #     outerr = numpy.sqrt((yerr_bin**2).sum())/len(yerr_bin)
+    outerr = numpy.std(y_bin)
     yarr = numpy.mean(y_bin)
     count = len(y_bin)
 
@@ -124,10 +145,11 @@ def avg_bin(y_bin, yerr_bin, nans_present):
 
 def sum_bin(y_bin, yerr_bin, nans_present):
 
-    if nans_present:
-        outerr = numpy.std(y_bin)
-    else:
-        outerr = numpy.sqrt((yerr_bin**2).sum())
+    # if nans_present:
+    #     outerr = numpy.std(y_bin)
+    # else:
+    #     outerr = numpy.sqrt((yerr_bin**2).sum())
+    outerr = numpy.std(y_bin)
     yarr = y_bin.sum()
     count = len(y_bin)
     return yarr, outerr, count
