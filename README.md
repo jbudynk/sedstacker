@@ -12,7 +12,7 @@ From the command line, run
 
 `cd` into `sedstacker` and run
 
-    python setup.py sedstacker install
+    python setup.py install
 
 Documentation
 -------------
@@ -30,7 +30,7 @@ The HTML files will be stored in `_build/html`.
 Quick guide
 -----------
 
-sedstacker was developed for interest in creating SED template models,
+``sedstacker`` was developed for interest in creating SED template models,
 increasing the signal-to-noise ratio of faint spectra, and studying
 the average SED characteristics of specific groups of astronomical
 objects.
@@ -65,33 +65,33 @@ have PhotometricPoints added, removed and masked.
 Spectrum - A Segment object of a spectrum in the scientific sense; it
 is meant to represent data taken from a spectrometer.
 
-   >>> spectrum = sedstacker.sed.Spectrum(x=spec, y=flux, yerr=fluxerr, xunit='AA', yunit='mag', z=redshift)
+    >>> spectrum = sedstacker.sed.Spectrum(x=spec, y=flux, yerr=fluxerr, xunit='AA', yunit='mag', z=redshift)
 
 AggregateSed - A collection of Segments (Spectra and/or Seds), usually
 from one astronomical source. Users may inspect and manipulate each
 Segment in the AggregateSed independently.
 
-   >>> # create an AggregateSed
-   >>> aggregate_sed = sedstacker.sed.AggregateSed([sed, spectrum])
-   >>> print aggregate_sed[0]
-     x      y   yerr xunit yunit
-   ------ ----- ---- ----- -----
-   3823.0 20.43 0.08    AA   mag
-   4459.7 20.28 0.08    AA   mag
-   5483.8 20.18 0.08    AA   mag
-   4779.6 20.18 0.08    AA   mag
-   6295.1 22.73 0.08    AA   mag
-   7640.8 21.01 0.08    AA   mag
-
-   >>> print aggregate_sed[1]
-     x      y   yerr
-   ------ ----- ----
-   3823.0 20.43 0.08
-   4459.7 20.28 0.08
-   5483.8 20.18 0.08
-   4779.6 20.18 0.08
-   6295.1 22.73 0.08
-   7640.8 21.01 0.08
+    >>> # create an AggregateSed
+    >>> aggregate_sed = sedstacker.sed.AggregateSed([sed, spectrum])
+    >>> print aggregate_sed[0]
+      x      y   yerr xunit yunit
+    ------ ----- ---- ----- -----
+    3823.0 20.43 0.08    AA   mag
+    4459.7 20.28 0.08    AA   mag
+    5483.8 20.18 0.08    AA   mag
+    4779.6 20.18 0.08    AA   mag
+    6295.1 22.73 0.08    AA   mag
+    7640.8 21.01 0.08    AA   mag
+    
+    >>> print aggregate_sed[1]
+      x      y   yerr
+    ------ ----- ----
+    3823.0 20.43 0.08
+    4459.7 20.28 0.08
+    5483.8 20.18 0.08
+    4779.6 20.18 0.08
+    6295.1 22.73 0.08
+    7640.8 21.01 0.08
 
 Stack - A collection of Segments and/or AggregateSeds, usually from different
  observations of one astronomical source, or from individual astronomical sources.
